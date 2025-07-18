@@ -208,12 +208,12 @@ end
     println("Running performance benchmarks...")
     
     # Benchmark single calculation
-    @time single_result = SubRefrac("SiO2", collect(1.0:0.1:20.0), 2.2)
+    @benchmark single_result = SubRefrac("SiO2", collect(1.0:0.1:20.0), 2.2)
     
     # Benchmark multi calculation
     formulas = ["SiO2", "Al2O3", "Fe2O3", "CaCO3", "MgO"]
     densities = [2.2, 3.95, 5.24, 2.71, 3.58]
-    @time multi_result = Refrac(formulas, collect(1.0:0.1:20.0), densities)
+    @benchmark multi_result = Refrac(formulas, collect(1.0:0.1:20.0), densities)
     
     println("Benchmarks completed!")
 end
