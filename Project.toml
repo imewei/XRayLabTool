@@ -1,0 +1,28 @@
+name = "XRayLabTool"
+uuid = "df3fe04d-a251-48f4-b0c1-7c37c180def4"
+authors = ["Wei Chen <wchen@anl.gov> and contributors"]
+version = "0.3.2"
+
+[deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+PCHIPInterpolation = "afe20452-48d1-4729-9a8b-50fb251f06cd"
+PeriodicTable = "7b2266bf-644c-5ea3-82d8-af4bbd25a884"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+
+[compat]
+BenchmarkTools = "1.6"
+CSV = "0.10"
+DataFrames = "1"
+PCHIPInterpolation = "0.2"
+PeriodicTable = "1"
+Unitful = "1"
+julia = "1.11"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
