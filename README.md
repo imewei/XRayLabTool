@@ -1,4 +1,4 @@
-# XRayLabTool.jl
+# XRayLabTool
 
 **Material Property Calculations for X-ray Interactions**
 
@@ -20,8 +20,7 @@
 To install this module via Julia's package manager:
 
 ```julia
-using Pkg
-Pkg.add("https://github.com/imewei/XRayLabTool.jl.git")
+add https://github.com/imewei/XRayLabTool.git
 ```
 
 ---
