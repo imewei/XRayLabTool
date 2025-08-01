@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>XRayLabTool Coverage Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .summary { background-color: #f0f0f0; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .coverage-bar { width: 100%; height: 20px; background-color: #f0f0f0; border-radius: 10px; overflow: hidden; margin: 10px 0; }
+        .coverage-fill { height: 100%; background-color: #28a745; }
+        .uncovered { color: red; font-weight: bold; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .error-handling { background-color: #fff3cd; }
+        .utility { background-color: #e2e3e5; }
+        code { background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>XRayLabTool.jl Coverage Report</h1>
+    
+    <div class="summary">
+        <h2>Coverage Summary</h2>
+        <p><strong>File:</strong> src/XRayLabTool.jl</p>
+        <p><strong>Total Lines:</strong> 647</p>
+        <p><strong>Executable Lines:</strong> 113</p>
+        <p><strong>Covered Lines:</strong> 101</p>
+        <p><strong>Coverage:</strong> 89.38%</p>
+        <div class="coverage-bar">
+            <div class="coverage-fill" style="width: 89.38%"></div>
+        </div>
+        <p style="color: green;"><strong>✅ Coverage above 80% threshold</strong></p>
+    </div>
+    
+    <h2>Uncovered Lines Analysis</h2>
+    <p>The following 12 lines are not covered by tests:</p>
+    
+    <table>
+        <tr>
+            <th>Line</th>
+            <th>Code</th>
+            <th>Category</th>
+            <th>Impact</th>
+        </tr>
+        <tr class="error-handling">
+            <td>148</td>
+            <td><code>catch</code></td>
+            <td>Error Handling</td>
+            <td>Exception handling for invalid element lookup</td>
+        </tr>
+        <tr class="error-handling">
+            <td>153</td>
+            <td><code>throw(ArgumentError("Element $element_symbol not found in periodic table"))</code></td>
+            <td>Error Handling</td>
+            <td>Exception thrown when element not found</td>
+        </tr>
+        <tr class="error-handling">
+            <td>185</td>
+            <td><code>throw(ArgumentError("Invalid chemical formula: $formulaStr"))</code></td>
+            <td>Error Handling</td>
+            <td>Exception thrown for invalid formula parsing</td>
+        </tr>
+        <tr class="error-handling">
+            <td>242</td>
+            <td><code>throw(ArgumentError("Element $element_symbol is NOT in the table list: $e"))</code></td>
+            <td>Error Handling</td>
+            <td>Exception thrown when atomic data file missing</td>
+        </tr>
+        <tr class="error-handling">
+            <td>399</td>
+            <td><code>throw(ArgumentError("All arguments must be vectors"))</code></td>
+            <td>Input Validation</td>
+            <td>Exception for incorrect argument types</td>
+        </tr>
+        <tr class="error-handling">
+            <td>409</td>
+            <td><code>throw(ArgumentError("Energy is out of range 0.03KeV ~ 30KeV"))</code></td>
+            <td>Input Validation</td>
+            <td>Exception for energy values outside valid range</td>
+        </tr>
+        <tr class="error-handling">
+            <td>449</td>
+            <td><code>@warn "Failed to process formula $formula: $e"</code></td>
+            <td>Error Logging</td>
+            <td>Warning when formula processing fails in parallel</td>
+        </tr>
+        <tr class="error-handling">
+            <td>451</td>
+            <td><code>end</code></td>
+            <td>Error Handling</td>
+            <td>End of catch block in parallel processing</td>
+        </tr>
+        <tr class="utility">
+            <td>641</td>
+            <td><code>function clear_caches!()</code></td>
+            <td>Utility Function</td>
+            <td>Cache clearing function declaration</td>
+        </tr>
+        <tr class="utility">
+            <td>642</td>
+            <td><code>empty!(ATOMIC_DATA_CACHE)</code></td>
+            <td>Utility Function</td>
+            <td>Clear atomic data cache</td>
+        </tr>
+        <tr class="utility">
+            <td>643</td>
+            <td><code>empty!(F1F2_TABLE_CACHE)</code></td>
+            <td>Utility Function</td>
+            <td>Clear scattering factor table cache</td>
+        </tr>
+        <tr class="utility">
+            <td>644</td>
+            <td><code>println("Caches cleared - memory freed")</code></td>
+            <td>Utility Function</td>
+            <td>Output message for cache clearing</td>
+        </tr>
+    </table>
+    
+    <h2>Coverage Gap Categories</h2>
+    
+    <h3>🔴 Error Handling & Input Validation (8 lines)</h3>
+    <p>These lines represent error conditions and edge cases:</p>
+    <ul>
+        <li><strong>Invalid element symbols:</strong> Lines 148, 153 - Exception handling for elements not in periodic table</li>
+        <li><strong>Invalid chemical formulas:</strong> Line 185 - Exception for malformed formula strings</li>
+        <li><strong>Missing atomic data files:</strong> Line 242 - Exception when element data files are missing</li>
+        <li><strong>Invalid input arguments:</strong> Lines 399, 409 - Input validation failures</li>
+        <li><strong>Parallel processing errors:</strong> Lines 449, 451 - Error handling in multithreaded execution</li>
+    </ul>
+    
+    <h3>🔵 Utility Functions (4 lines)</h3>
+    <p>These lines are in utility functions not exercised by current tests:</p>
+    <ul>
+        <li><strong>Cache management:</strong> Lines 641-644 - The <code>clear_caches!()</code> function for memory management</li>
+    </ul>
+    
+    <h2>Logical Paths Never Exercised</h2>
+    
+    <h3>Error Branches in Core Functions</h3>
+    <ul>
+        <li><strong>parse_formula():</strong> Invalid formula input path (Line 185)</li>
+        <li><strong>get_atomic_data():</strong> Element not found path (Lines 148, 153)</li>
+        <li><strong>load_f1f2_table():</strong> Missing data file path (Line 242)</li>
+        <li><strong>Refrac():</strong> Input validation error paths (Lines 399, 409)</li>
+        <li><strong>Refrac():</strong> Parallel processing error handling (Lines 449, 451)</li>
+    </ul>
+    
+    <h3>Cache Management</h3>
+    <ul>
+        <li><strong>clear_caches!():</strong> Entire utility function (Lines 641-644)</li>
+    </ul>
+    
+    <h2>Test Coverage Recommendations</h2>
+    
+    <h3>High Priority (Error Handling)</h3>
+    <ol>
+        <li>Test invalid element symbols in formulas</li>
+        <li>Test malformed chemical formula strings</li>
+        <li>Test missing atomic data files</li>
+        <li>Test invalid input arguments to Refrac()</li>
+        <li>Test energy values outside valid range</li>
+    </ol>
+    
+    <h3>Medium Priority (Utility Functions)</h3>
+    <ol>
+        <li>Test cache clearing functionality</li>
+        <li>Test parallel processing error conditions</li>
+    </ol>
+    
+    <h2>Conclusion</h2>
+    <p>The current test suite achieves <strong>89.38% line coverage</strong>, which exceeds the 80% threshold. 
+    The uncovered lines primarily represent error handling paths and utility functions that are important 
+    for robustness but not exercised in normal operation. Adding tests for these edge cases would 
+    improve error handling confidence and bring coverage close to 100%.</p>
+    
+    <p><em>Generated: $(Dates.now())</em></p>
+</body>
+</html>

@@ -1,5 +1,7 @@
 using XRayLabTool
 using Test
+include("utils.jl")
+using .Main: @expect_error
 
 # Test constants
 const DEFAULT_TOL = 1e-6
@@ -178,6 +180,112 @@ end
             @test length(material_data.f1) == length(ENERGIES)
             @test length(material_data.Dispersion) == length(ENERGIES)
             @test length(material_data.reSLD) == length(ENERGIES)
+        end
+    end
+    @testset "Input Validation and Error Handling Tests" begin
+        
+        @testset "Refrac Function Error Handling" begin
+            # Test energy outside 0.03–30 keV range (below minimum)
+            @testset "Energy below 0.03 keV" begin
+                @expect_error Refrac(["SiO2"], [0.02, 5.0], [2.2]) r"Energy is out of range.*0\.03KeV.*30KeV"
+            end
+            
+            # Test energy outside 0.03–30 keV range (above maximum)
+            @testset "Energy above 30 keV" begin
+                @expect_error Refrac(["SiO2"], [5.0, 35.0], [2.2]) r"Energy is out of range.*0\.03KeV.*30KeV"
+            end
+            
+            # Test mismatched formulaList & massDensityList lengths
+            @testset "Mismatched list lengths" begin
+                @expect_error Refrac(["SiO2", "Al2O3"], [8.0, 10.0], [2.2]) r"Formula list and mass density list must have the same length"
+            end
+            
+            # Test non-vector inputs (pass scalar formula)
+            @testset "Non-vector formula input" begin
+                @expect_error Refrac("SiO2", [8.0, 10.0], [2.2]) r"MethodError.*Refrac"
+            end
+            
+            # Test non-vector inputs (pass scalar energy)
+            @testset "Non-vector energy input" begin
+                @expect_error Refrac(["SiO2"], 8.0, [2.2]) r"MethodError.*Refrac"
+            end
+            
+            # Test non-vector inputs (pass scalar density)
+            @testset "Non-vector density input" begin
+                @expect_error Refrac(["SiO2"], [8.0, 10.0], 2.2) r"MethodError.*Refrac"
+            end
+            
+            # Test empty formula list
+            @testset "Empty formula list" begin
+                @expect_error Refrac(String[], [8.0, 10.0], Float64[]) r"Formula list and energy vector must not be empty"
+            end
+            
+            # Test empty energy vector
+            @testset "Empty energy vector" begin
+                @expect_error Refrac(["SiO2"], Float64[], [2.2]) r"Formula list and energy vector must not be empty"
+            end
+        end
+        
+        @testset "SubRefrac Function Error Handling" begin
+            # SubRefrac doesn't have explicit energy range validation,
+            # but we can test invalid formulas and edge cases
+            
+            # Test invalid chemical formula
+            @testset "Invalid chemical formula" begin
+                @expect_error SubRefrac("InvalidElement123", [8.0], 2.2) r"Element.*not found"
+            end
+            
+            # Test empty formula string
+            @testset "Empty formula string" begin
+                @expect_error SubRefrac("", [8.0], 2.2) r"Invalid chemical formula"
+            end
+        end
+        
+        @testset "Duplicated Formulas - Independence Test" begin
+            # Test that duplicated formulas produce independent results
+            @testset "Duplicate formulas yield consistent results" begin
+                formulas = ["SiO2", "SiO2", "Al2O3"]
+                energies = [8.0, 10.0, 12.0]
+                densities = [2.2, 2.2, 3.95]
+                
+                results = Refrac(formulas, energies, densities)
+                
+                # Both SiO2 entries should be present and identical
+                @test haskey(results, "SiO2")
+                @test haskey(results, "Al2O3")
+                
+                # Results should be consistent for the same material
+                sio2_result = results["SiO2"]
+                @test sio2_result.Formula == "SiO2"
+                @test sio2_result.Density == 2.2
+                @test length(sio2_result.Energy) == length(energies)
+            end
+        end
+        
+        @testset "Edge Case Input Values" begin
+            # Test with boundary energy values
+            @testset "Boundary energy values" begin
+                # Test exactly at boundaries (should work)
+                result_min = Refrac(["SiO2"], [0.03], [2.2])
+                @test haskey(result_min, "SiO2")
+                
+                result_max = Refrac(["SiO2"], [30.0], [2.2])
+                @test haskey(result_max, "SiO2")
+            end
+            
+            # Test with very small density
+            @testset "Very small density" begin
+                result = SubRefrac("H2O", [8.0], 0.001)
+                @test result.Density == 0.001
+                @test result.Formula == "H2O"
+            end
+            
+            # Test with very large density
+            @testset "Very large density" begin
+                result = SubRefrac("Au", [8.0], 19.3)  # Gold density
+                @test result.Density == 19.3
+                @test result.Formula == "Au"
+            end
         end
     end
 end
