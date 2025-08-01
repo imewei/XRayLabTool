@@ -20,7 +20,6 @@
 To install this module via Julia's package manager:
 
 ```julia
-]
 add https://github.com/imewei/XRayLabTool.git
 ```
 
