@@ -6,16 +6,16 @@ version = "0.3.2"
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Mendeleev = "c116f080-063d-490a-9873-2b5b2cce4c34"
 PCHIPInterpolation = "afe20452-48d1-4729-9a8b-50fb251f06cd"
-PeriodicTable = "7b2266bf-644c-5ea3-82d8-af4bbd25a884"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
 CSV = "0.10"
 DataFrames = "1"
+Mendeleev = "1.0.1"
 PCHIPInterpolation = "0.2"
-PeriodicTable = "1"
 Unitful = "1"
 julia = "1.11"
 

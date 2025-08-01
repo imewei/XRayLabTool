@@ -45,7 +45,7 @@ module XRayLabTool
 using CSV
 using DataFrames
 using PCHIPInterpolation
-using PeriodicTable: elements
+using Mendeleev: chem_elements
 using Unitful
 import Base.Threads.@threads
 
@@ -137,15 +137,16 @@ function get_atomic_data(element_symbol::String)
     end
 
     # Search periodic table for element
-    for (i, elem) in enumerate(elements)
-        if elem.symbol == element_symbol
-            atomic_number = i
-            atomic_mass = ustrip(elem.atomic_mass)  # Remove units
+    try
+        elem = chem_elements[Symbol(element_symbol)]
+        atomic_number = elem.atomic_number
+        atomic_mass = ustrip(elem.atomic_weight)  # Remove units
 
-            # Cache the result for future use
-            ATOMIC_DATA_CACHE[element_symbol] = (atomic_number, atomic_mass)
-            return (atomic_number, atomic_mass)
-        end
+        # Cache the result for future use
+        ATOMIC_DATA_CACHE[element_symbol] = (atomic_number, atomic_mass)
+        return (atomic_number, atomic_mass)
+    catch
+        # Element not found, will throw error below
     end
 
     # Element not found
