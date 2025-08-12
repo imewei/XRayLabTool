@@ -112,6 +112,16 @@ println(result.reSLD[end])   # Last value of real SLD
 
 ---
 
+## 📋 Recent Changes
+
+**House-keeping cleanup (No functional changes)**
+- Removed unused artifacts: coverage files, temporary documentation, example test files
+- Cleaned up .DS_Store files and tidied .gitignore
+- Added GitHub workflow configuration
+- No functional code was modified during this cleanup
+
+---
+
 ## 🧪 License
 
 MIT License

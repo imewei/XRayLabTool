@@ -27,4 +27,8 @@ Manifest*.toml
 LocalPreferences.toml
 JuliaLocalPreferences.toml
 
-.DS_Store
+**/.DS_Store
+
+# Coverage reports and build artifacts
+coverage*
+*.html
