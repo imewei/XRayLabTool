@@ -1,0 +1,24 @@
+### Current Project Structure:
+
+XRayLabTool/
+├── .git/                    # Git repository data
+├── .github/                 # GitHub workflows and configuration
+│   └── workflows/
+│       └── ci.yml          # Continuous Integration setup
+├── .gitignore              # Git ignore rules (already includes .DS_Store)
+├── .JuliaFormatter.toml    # Code formatting configuration
+├── CHANGELOG.md            # Version history and changes
+├── format_project.jl       # Development utility for code formatting
+├── LICENSE                 # Project license
+├── Manifest.toml          # Julia dependency lock file
+├── Project.toml           # Julia project configuration
+├── README.md              # Project documentation
+├── src/                   # Source code
+│   ├── AtomicScatteringFactor/  # Atomic scattering factor data files
+│   │   └── *.nff          # Element-specific scattering factor files
+│   └── XRayLabTool.jl     # Main module implementation
+└── test/                  # Test suite
+    ├── reference/         # Reference data for validation
+    ├── formula_parsing.jl # Formula parsing tests
+    ├── runtests.jl       # Main test runner
+    └── utils.jl          # Test utilities
