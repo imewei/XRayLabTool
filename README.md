@@ -35,26 +35,44 @@ Or
 
 ## 🚀 Quick Start
 
+> **📣 New API (v0.5.0+)**: We've improved function names for better readability. Old names still work but will show deprecation warnings.
+
 ### Single Material
 
 ```julia
 using XRayLabTool
 
-result = SubRefrac("SiO2", [8.0, 10.0, 12.0], 2.2)
+# NEW API (recommended)
+result = calculate_single_material_properties("SiO2", [8.0, 10.0, 12.0], 2.2)
+
+# OLD API (deprecated but still works)
+# result = SubRefrac("SiO2", [8.0, 10.0, 12.0], 2.2)
 ```
 
 ### Multiple Materials
 
 ```julia
-results = Refrac(["SiO2", "Al2O3"], [8.0, 10.0, 12.0], [2.2, 3.95])
+# NEW API (recommended)
+results = calculate_xray_properties(["SiO2", "Al2O3"], [8.0, 10.0, 12.0], [2.2, 3.95])
+
+# OLD API (deprecated but still works)
+# results = Refrac(["SiO2", "Al2O3"], [8.0, 10.0, 12.0], [2.2, 3.95])
 ```
 
 ### Accessing Results
 
 ```julia
 res = results["SiO2"]
-println(res.MW)
-println(res.Dispersion)
+
+# NEW field names (recommended)
+println(res.molecular_weight)   # Molecular weight in g/mol
+println(res.dispersion)         # Dispersion coefficients
+println(res.critical_angle)     # Critical angles in degrees
+
+# OLD field names (deprecated but still work)
+# println(res.MW)               # Same as molecular_weight
+# println(res.Dispersion)       # Same as dispersion
+# println(res.Critical_Angle)   # Same as critical_angle
 ```
 
 ---
@@ -71,34 +89,46 @@ println(res.Dispersion)
 
 ## 📤 Output: `XRayResult` Struct
 
+> **📣 v0.5.0 Field Names**: Both old and new field names work for backward compatibility.
+
 The result contains:
 
-- `Formula::String` – formula
-- `MW::Float64` – molecular_weight (g/mol)
-- `Number_Of_Electrons::Float64` – num_electrons (electrons/molecule)
-- `Density::Float64` – mass_density (g/cm³)
-- `Electron_Density::Float64` – electron_density (1/Å³)
-- `Energy::Vector{Float64}` – X-ray energy (keV)
-- `Wavelength::Vector{Float64}` – wavelength (Å)
-- `Dispersion::Vector{Float64}` – Dispersion coefficient delta
-- `Absorption::Vector{Float64}` – Absorption coefficient beta
-- `f1::Vector{Float64}` – Real atomic scattering factor
-- `f2::Vector{Float64}` – Imaginary atomic scattering factor
-- `Critical_Angle::Vector{Float64}` – critical_angle (degrees)
-- `Attenuation_Length::Vector{Float64}` – attenuation_length (cm)
-- `reSLD::Vector{Float64}` – SLD_real (Å⁻²)
-- `imSLD::Vector{Float64}` – SLD_imag (Å⁻²)
+| **New Name (Recommended)** | **Old Name (Deprecated)** | **Type** | **Description** |
+|----------------------------|---------------------------|----------|------------------|
+| `formula` | `Formula` | `String` | Chemical formula |
+| `molecular_weight` | `MW` | `Float64` | Molecular weight (g/mol) |
+| `number_of_electrons` | `Number_Of_Electrons` | `Float64` | Electrons per molecule |
+| `mass_density` | `Density` | `Float64` | Mass density (g/cm³) |
+| `electron_density` | `Electron_Density` | `Float64` | Electron density (1/Å³) |
+| `energy` | `Energy` | `Vector{Float64}` | X-ray energy (keV) |
+| `wavelength` | `Wavelength` | `Vector{Float64}` | X-ray wavelength (Å) |
+| `dispersion` | `Dispersion` | `Vector{Float64}` | Dispersion coefficient δ |
+| `absorption` | `Absorption` | `Vector{Float64}` | Absorption coefficient β |
+| `f1` | `f1` | `Vector{Float64}` | Real atomic scattering factor |
+| `f2` | `f2` | `Vector{Float64}` | Imaginary atomic scattering factor |
+| `critical_angle` | `Critical_Angle` | `Vector{Float64}` | Critical angle (degrees) |
+| `attenuation_length` | `Attenuation_Length` | `Vector{Float64}` | Attenuation length (cm) |
+| `real_sld` | `reSLD` | `Vector{Float64}` | Real part of SLD (Å⁻²) |
+| `imag_sld` | `imSLD` | `Vector{Float64}` | Imaginary part of SLD (Å⁻²) |
 
 ---
 
-## 📘 Example
+## 📚 Example
 
 ```julia
-result = SubRefrac("SiO2", collect(8:0.5:10), 2.33)
+# Using new API (recommended)
+result = calculate_single_material_properties("SiO2", collect(8:0.5:10), 2.33)
 
-println(result.Formula)         # "SiO2"
-println(result.Dispersion[1])        # First value of δ
-println(result.reSLD[end])   # Last value of real SLD
+# Access results using new field names
+println(result.formula)            # "SiO2"
+println(result.dispersion[1])      # First value of δ
+println(result.real_sld[end])      # Last value of real SLD
+
+# Old way still works (with deprecation warnings)
+# result = SubRefrac("SiO2", collect(8:0.5:10), 2.33)
+# println(result.Formula)         # "SiO2" (deprecated field name)
+# println(result.Dispersion[1])   # First value of δ (deprecated field name)
+# println(result.reSLD[end])      # Last value of real SLD (deprecated field name)
 ```
 
 ---

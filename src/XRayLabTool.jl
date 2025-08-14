@@ -4,18 +4,28 @@ XRayLabTool - Material property calculations for X-ray interactions
 This module provides functions to calculate X-ray optical properties of materials
 based on their chemical composition and density.
 
-**Main Functions:**
-- 'Refrac': Calculate properties for multiple chemical formulas
-- 'SubRefrac': Calculate properties for a single chemical formula
+**Main Functions (New API - Recommended):**
+- `calculate_xray_properties`: Calculate properties for multiple chemical formulas
+- `calculate_single_material_properties`: Calculate properties for a single chemical formula
 
 **Usage Examples:**
-'''julia
-# Single formula
-result = SubRefrac("SiO2", [8.0, 10.0, 12.0], 2.2)
+```julia
+# Single formula (new API)
+result = calculate_single_material_properties("SiO2", [8.0, 10.0, 12.0], 2.2)
 
-# Multiple formulas
-results = Refrac(["SiO2", "Al2O3"], [8.0, 10.0, 12.0], [2.2, 3.95])
-'''
+# Multiple formulas (new API)
+results = calculate_xray_properties(["SiO2", "Al2O3"], [8.0, 10.0, 12.0], [2.2, 3.95])
+
+# Access properties using new field names
+println("Molecular weight: ", result.molecular_weight)
+println("Critical angle: ", result.critical_angle[1])
+```
+
+!!! warning "Deprecated Functions"
+    The old function names `Refrac` and `SubRefrac` are still available for backward
+    compatibility but are deprecated. Please use the new API names:
+    - `Refrac` → `calculate_xray_properties`
+    - `SubRefrac` → `calculate_single_material_properties`
 
 **Input Parameters:**
 1. Chemical formula(s): Case-sensitive strings (e.g., "CO" for Carbon Monoxide vs "Co" for Cobalt)
@@ -24,21 +34,21 @@ results = Refrac(["SiO2", "Al2O3"], [8.0, 10.0, 12.0], [2.2, 3.95])
 
 **Output Properties:**
 The functions return XRayResult struct(s) containing:
-1. Chemical formula
-2. Molecular weight (g/mol)
-3. Number of electrons per molecule
-4. Mass density (g/cm³)
-5. Electron density (1/Å³)
-6. X-ray energy (KeV)
-7. X-ray wavelength (Å)
-8. Dispersion coefficient
-9. Absorption coefficient
-10. Real part of atomic scattering factor (f1)
-11. Imaginary part of atomic scattering factor (f2)
-12. Critical angle (degrees)
-13. Attenuation length (cm)
-14. Real part of scattering length density (SLD) (Å⁻²)
-15. Imaginary part of SLD (Å⁻²)
+1. Chemical formula (`formula`)
+2. Molecular weight in g/mol (`molecular_weight`)
+3. Number of electrons per molecule (`number_of_electrons`)
+4. Mass density in g/cm³ (`mass_density`)
+5. Electron density in 1/Å³ (`electron_density`)
+6. X-ray energy in KeV (`energy`)
+7. X-ray wavelength in Å (`wavelength`)
+8. Dispersion coefficient (`dispersion`)
+9. Absorption coefficient (`absorption`)
+10. Real part of atomic scattering factor (`f1`)
+11. Imaginary part of atomic scattering factor (`f2`)
+12. Critical angle in degrees (`critical_angle`)
+13. Attenuation length in cm (`attenuation_length`)
+14. Real part of scattering length density in Å⁻² (`real_sld`)
+15. Imaginary part of SLD in Å⁻² (`imag_sld`)
 """
 module XRayLabTool
 
@@ -49,7 +59,9 @@ using Mendeleev: chem_elements
 using Unitful
 import Base.Threads.@threads
 
+# Export statements - both new and deprecated names for backward compatibility
 export Refrac, SubRefrac, XRayResult
+export calculate_xray_properties, calculate_single_material_properties
 
 # =====================================================================================
 # DATA STRUCTURES
@@ -64,21 +76,54 @@ Contains all computed properties including scattering factors, optical constants
 and derived quantities like critical angles and attenuation lengths.
 """
 struct XRayResult
-    Formula::String                   # Chemical formula
-    MW::Float64                       # Molecular weight (g/mol)
-    Number_Of_Electrons::Float64      # Electrons per molecule
-    Density::Float64                  # Mass density (g/cm³)
-    Electron_Density::Float64         # Electron density (1/Å³)
-    Energy::Vector{Float64}           # X-ray energy (KeV)
-    Wavelength::Vector{Float64}       # X-ray wavelength (Å)
-    Dispersion::Vector{Float64}       # Dispersion coefficient
-    Absorption::Vector{Float64}       # Absorption coefficient
-    f1::Vector{Float64}               # Real part of atomic scattering factor
-    f2::Vector{Float64}               # Imaginary part of atomic scattering factor
-    Critical_Angle::Vector{Float64}   # Critical angle (degrees)
-    Attenuation_Length::Vector{Float64} # Attenuation length (cm)
-    reSLD::Vector{Float64}            # Real part of SLD (Å⁻²)
-    imSLD::Vector{Float64}            # Imaginary part of SLD (Å⁻²)
+    formula::String                      # Chemical formula
+    molecular_weight::Float64            # Molecular weight (g/mol)
+    number_of_electrons::Float64         # Electrons per molecule
+    mass_density::Float64                # Mass density (g/cm³)
+    electron_density::Float64            # Electron density (1/Å³)
+    energy::Vector{Float64}              # X-ray energy (KeV)
+    wavelength::Vector{Float64}          # X-ray wavelength (Å)
+    dispersion::Vector{Float64}          # Dispersion coefficient
+    absorption::Vector{Float64}          # Absorption coefficient
+    f1::Vector{Float64}                  # Real part of atomic scattering factor
+    f2::Vector{Float64}                  # Imaginary part of atomic scattering factor
+    critical_angle::Vector{Float64}      # Critical angle (degrees)
+    attenuation_length::Vector{Float64}  # Attenuation length (cm)
+    real_sld::Vector{Float64}            # Real part of SLD (Å⁻²)
+    imag_sld::Vector{Float64}            # Imaginary part of SLD (Å⁻²)
+end
+
+# Deprecated field name mappings for backward compatibility
+Base.getproperty(result::XRayResult, name::Symbol) = begin
+    if name == :Formula
+        return getfield(result, :formula)
+    elseif name == :MW
+        return getfield(result, :molecular_weight)
+    elseif name == :Number_Of_Electrons
+        return getfield(result, :number_of_electrons)
+    elseif name == :Density
+        return getfield(result, :mass_density)
+    elseif name == :Electron_Density
+        return getfield(result, :electron_density)
+    elseif name == :Energy
+        return getfield(result, :energy)
+    elseif name == :Wavelength
+        return getfield(result, :wavelength)
+    elseif name == :Dispersion
+        return getfield(result, :dispersion)
+    elseif name == :Absorption
+        return getfield(result, :absorption)
+    elseif name == :Critical_Angle
+        return getfield(result, :critical_angle)
+    elseif name == :Attenuation_Length
+        return getfield(result, :attenuation_length)
+    elseif name == :reSLD
+        return getfield(result, :real_sld)
+    elseif name == :imSLD
+        return getfield(result, :imag_sld)
+    else
+        return getfield(result, name)
+    end
 end
 
 # =====================================================================================
@@ -89,15 +134,20 @@ end
 Physical constants used in X-ray calculations.
 All values are in SI units unless otherwise specified.
 """
-const THOMPSON = 2.8179403227e-15    # Thomson scattering length (m)
+const THOMSON_SCATTERING_LENGTH = 2.8179403227e-15    # Thomson scattering length (m)
 const SPEED_OF_LIGHT = 299792458.0   # Speed of light (m/s)
 const PLANCK = 6.626068e-34          # Planck constant (J·s)
 const ELEMENT_CHARGE = 1.60217646e-19 # Elementary charge (C)
 const AVOGADRO = 6.02214199e23       # Avogadro's number (mol⁻¹)
 
 # Pre-computed constants for efficiency
-const ENERGY_TO_WAVELENGTH_FACTOR = (SPEED_OF_LIGHT * PLANCK / ELEMENT_CHARGE) / 1000.0
-const SCATTERING_FACTOR = THOMPSON * AVOGADRO * 1e6 / (2 * π)
+const HC_OVER_ELECTRON_CHARGE_keV = (SPEED_OF_LIGHT * PLANCK / ELEMENT_CHARGE) / 1000.0
+const SCATTERING_PREFACTOR = THOMSON_SCATTERING_LENGTH * AVOGADRO * 1e6 / (2 * π)
+
+# Deprecation bridges for backward compatibility
+const THOMPSON = THOMSON_SCATTERING_LENGTH  # Deprecated: use THOMSON_SCATTERING_LENGTH
+const ENERGY_TO_WAVELENGTH_FACTOR = HC_OVER_ELECTRON_CHARGE_keV  # Deprecated: use HC_OVER_ELECTRON_CHARGE_keV
+const SCATTERING_FACTOR = SCATTERING_PREFACTOR  # Deprecated: use SCATTERING_PREFACTOR
 
 # =====================================================================================
 # CACHING SYSTEM
@@ -116,7 +166,7 @@ const F1F2_TABLE_CACHE = Dict{String, DataFrame}()
 # =====================================================================================
 
 """
-    get_atomic_data(element_symbol::String) -> (Int, Float64)
+    atomic_number_and_mass(element_symbol::String) -> (Int, Float64)
 
 Retrieve atomic number and atomic mass for a given element symbol.
 Uses caching to avoid repeated lookups of the same element.
@@ -130,7 +180,7 @@ Uses caching to avoid repeated lookups of the same element.
 # Throws
 - 'ArgumentError': If element symbol is not found in periodic table
 """
-function get_atomic_data(element_symbol::String)
+function atomic_number_and_mass(element_symbol::String)
     # Check cache first for performance
     if haskey(ATOMIC_DATA_CACHE, element_symbol)
         return ATOMIC_DATA_CACHE[element_symbol]
@@ -200,7 +250,7 @@ function parse_formula(formulaStr::String)
 end
 
 """
-    load_f1f2_table(element_symbol::String) -> DataFrame
+    load_scattering_factor_table(element_symbol::String) -> DataFrame
 
 Load atomic scattering factor table for a given element.
 Uses caching to avoid repeated file I/O operations.
@@ -223,7 +273,7 @@ E,f1,f2
 # Throws
 - 'ArgumentError': If element data file cannot be found or loaded
 """
-function load_f1f2_table(element_symbol::String)
+function load_scattering_factor_table(element_symbol::String)
     # Check cache first
     if haskey(F1F2_TABLE_CACHE, element_symbol)
         return F1F2_TABLE_CACHE[element_symbol]
@@ -244,7 +294,7 @@ function load_f1f2_table(element_symbol::String)
 end
 
 """
-    create_interpolators(energy_table, f1_table, f2_table) -> (Interpolator, Interpolator)
+    pchip_interpolators(energy_table, f1_table, f2_table) -> (Interpolator, Interpolator)
 
 Create PCHIP interpolators for atomic scattering factors f1 and f2.
 
@@ -260,7 +310,7 @@ Create PCHIP interpolators for atomic scattering factors f1 and f2.
 Uses PCHIP (Piecewise Cubic Hermite Interpolating Polynomial) for smooth interpolation
 while preserving monotonicity in the data.
 """
-function create_interpolators(
+function pchip_interpolators(
     energy_table::Vector{Float64},
     f1_table::Vector{Float64},
     f2_table::Vector{Float64},
@@ -271,31 +321,31 @@ function create_interpolators(
 end
 
 """
-    calculate_scattering_factors!(...)
+    accumulate_optical_coefficients!(...)
 
 Vectorized calculation of X-ray scattering factors and optical properties.
 
-This function performs the core calculation of dispersion, absorption, and total
+This function performs the core calculation of delta (δ), beta (β), and total
 scattering factors for a material based on its elemental composition.
 
 # Arguments
-- 'energy_ev::Vector{Float64}': X-ray energies in eV
-- 'wavelength::Vector{Float64}': Corresponding wavelengths in meters
+- 'energies_eV::Vector{Float64}': X-ray energies in eV
+- 'wavelengths_m::Vector{Float64}': Corresponding wavelengths in meters
 - 'mass_density::Float64': Material density in g/cm³
 - 'molecular_weight::Float64': Molecular weight in g/mol
 - 'element_data::Vector{Tuple{Float64, Any, Any}}': Element data (count, f1_interp, f2_interp)
-- 'dispersion::Vector{Float64}': Output array for dispersion coefficients
-- 'absorption::Vector{Float64}': Output array for absorption coefficients
+- 'delta::Vector{Float64}': Output array for δ (real part of refractive index)
+- 'beta::Vector{Float64}': Output array for β (imaginary part of refractive index)
 - 'f1_total::Vector{Float64}': Output array for total f1 values
 - 'f2_total::Vector{Float64}': Output array for total f2 values
 
 # Mathematical Background
-The dispersion and absorption coefficients are calculated using:
+The optical coefficients delta and beta are calculated using:
 - δ = (λ²/2π) × rₑ × ρ × Nₐ × (Σᵢ nᵢ × f1ᵢ) / M
 - β = (λ²/2π) × rₑ × ρ × Nₐ × (Σᵢ nᵢ × f2ᵢ) / M
 
 Where:
-- λ: X-ray wavelength
+- λ: X-ray wavelength in meters
 - rₑ: Thomson scattering length
 - ρ: Mass density
 - Nₐ: Avogadro's number
@@ -303,22 +353,22 @@ Where:
 - f1ᵢ, f2ᵢ: Atomic scattering factors for element i
 - M: Molecular weight
 """
-function calculate_scattering_factors!(
-    energy_ev::Vector{Float64},
-    wavelength::Vector{Float64},
+function accumulate_optical_coefficients!(
+    energies_eV::Vector{Float64},
+    wavelengths_m::Vector{Float64},
     mass_density::Float64,
     molecular_weight::Float64,
     element_data::Vector{Tuple{Float64, Any, Any}}, # (count, itp1, itp2)
-    dispersion::Vector{Float64},
-    absorption::Vector{Float64},
+    delta::Vector{Float64},
+    beta::Vector{Float64},
     f1_total::Vector{Float64},
     f2_total::Vector{Float64},
 )
-    n_energies = length(energy_ev)
+    n_energies = length(energies_eV)
 
     # Pre-compute density-dependent factor for efficiency
     # Factor includes: (λ²/2π) × rₑ × ρ × Nₐ / M
-    common_factor = SCATTERING_FACTOR * mass_density / molecular_weight
+    common_factor = SCATTERING_PREFACTOR * mass_density / molecular_weight
 
     # Process each element in the formula
     for (count, itp1, itp2) in element_data
@@ -328,15 +378,15 @@ function calculate_scattering_factors!(
         # Vectorized calculation across all energies
         @inbounds for i in 1:n_energies
             # Interpolate scattering factors at this energy
-            f1_val = itp1(energy_ev[i])
-            f2_val = itp2(energy_ev[i])
+            f1_val = itp1(energies_eV[i])
+            f2_val = itp2(energies_eV[i])
 
             # Calculate wavelength-dependent factors
-            wave_sq = wavelength[i]^2
+            wave_sq = wavelengths_m[i]^2
 
             # Accumulate contributions to optical properties
-            dispersion[i] += wave_sq * element_contribution_factor * f1_val
-            absorption[i] += wave_sq * element_contribution_factor * f2_val
+            delta[i] += wave_sq * element_contribution_factor * f1_val
+            beta[i] += wave_sq * element_contribution_factor * f2_val
 
             # Accumulate total scattering factors
             f1_total[i] += count * f1_val
@@ -352,6 +402,16 @@ end
 """
     Refrac(formulaList, energy, massDensityList) -> Dict{String, XRayResult}
 
+!!! warning "Deprecated Function"
+    This function is deprecated. Use `calculate_xray_properties` instead for better code clarity.
+    ```julia
+    # Old (deprecated)
+    results = Refrac(formulas, energies, densities)
+    
+    # New (recommended)
+    results = calculate_xray_properties(formulas, energies, densities)
+    ```
+
 Calculate X-ray optical properties for multiple chemical formulas.
 
 This is the main function for batch processing of multiple materials.
@@ -359,7 +419,7 @@ Uses parallel processing to improve performance for large datasets.
 
 # Arguments
 - 'formulaList::Vector{String}': List of chemical formulas
-- 'energy::Vector{Float64}': X-ray energies in KeV (0.03 - 30 KeV)
+- 'energies_keV::Vector{Float64}': X-ray energies in KeV (0.03 - 30 KeV)
 - 'massDensityList::Vector{Float64}': Mass densities in g/cm³
 
 # Returns
@@ -367,16 +427,16 @@ Uses parallel processing to improve performance for large datasets.
 
 # Examples
 '''julia
-# Calculate properties for multiple materials
+# Calculate properties for multiple materials (using deprecated field names for backward compatibility)
 formulas = ["SiO2", "Al2O3", "Fe2O3"]
 energies = [8.0, 10.0, 12.0, 15.0]
 densities = [2.2, 3.95, 5.24]
 
 results = Refrac(formulas, energies, densities)
 
-# Access results for specific material
+# Access results for specific material (using deprecated field name)
 sio2_result = results["SiO2"]
-println("SiO2 molecular weight: ", sio2_result.MW)
+println("SiO2 molecular weight: ", sio2_result.MW)  # MW is deprecated, use molecular_weight
 '''
 
 # Error Handling
@@ -391,7 +451,7 @@ println("SiO2 molecular weight: ", sio2_result.MW)
 """
 function Refrac(
     formulaList::Vector{String},
-    energy::Vector{Float64},
+    energies_keV::Vector{Float64},
     massDensityList::Vector{Float64},
 )
     # ==================================================================================
@@ -399,17 +459,17 @@ function Refrac(
     # ==================================================================================
 
     # Check argument types
-    if !all(isa(arg, Vector) for arg in [formulaList, energy, massDensityList])
+    if !all(isa(arg, Vector) for arg in [formulaList, energies_keV, massDensityList])
         throw(ArgumentError("All arguments must be vectors"))
     end
 
     # Check for empty inputs
-    if any(isempty(arg) for arg in [formulaList, energy])
+    if any(isempty(arg) for arg in [formulaList, energies_keV])
         throw(ArgumentError("Formula list and energy vector must not be empty"))
     end
 
     # Validate energy range (X-ray energies typically 0.03-30 KeV)
-    if any(energy .< 0.03) || any(energy .> 30)
+    if any(energies_keV .< 0.03) || any(energies_keV .> 30)
         throw(ArgumentError("Energy is out of range 0.03KeV ~ 30KeV"))
     end
 
@@ -423,7 +483,7 @@ function Refrac(
     # ==================================================================================
 
     # Sort energy array for consistent results
-    energy_sorted = sort(energy)
+    energies_keV_sorted = sort(energies_keV)
 
     # Pre-allocate results dictionary
     results = Dict{String, XRayResult}()
@@ -442,7 +502,7 @@ function Refrac(
 
         try
             # Calculate properties for this formula
-            result = SubRefrac(formula, energy_sorted, mass_density)
+            result = SubRefrac(formula, energies_keV_sorted, mass_density)
 
             # Thread-safe insertion into results dictionary
             lock(results_lock) do
@@ -460,6 +520,16 @@ end
 """
     SubRefrac(formulaStr, energy, massDensity) -> XRayResult
 
+!!! warning "Deprecated Function"
+    This function is deprecated. Use `calculate_single_material_properties` instead for better code clarity.
+    ```julia
+    # Old (deprecated)
+    result = SubRefrac("SiO2", energies, density)
+    
+    # New (recommended)
+    result = calculate_single_material_properties("SiO2", energies, density)
+    ```
+
 Calculate X-ray optical properties for a single chemical formula.
 
 This function performs the detailed calculation of all X-ray optical properties
@@ -467,7 +537,7 @@ for a single material composition.
 
 # Arguments
 - 'formulaStr::String': Chemical formula (e.g., "SiO2", "Al2O3")
-- 'energy::Vector{Float64}': X-ray energies in KeV
+- 'energies_keV::Vector{Float64}': X-ray energies in KeV
 - 'massDensity::Float64': Mass density in g/cm³
 
 # Returns
@@ -491,16 +561,16 @@ The calculations are based on the X-ray optical constants:
 
 # Examples
 '''julia
-# Calculate properties for quartz at multiple energies
+# Calculate properties for quartz at multiple energies (using deprecated field names for backward compatibility)
 result = SubRefrac("SiO2", [8.0, 10.0, 12.0], 2.2)
 
-# Access specific properties
-println("Molecular weight: ", result.MW)
-println("Critical angles: ", result.Critical_Angle)
-println("Attenuation lengths: ", result.Attenuation_Length)
+# Access specific properties (using deprecated field names)
+println("Molecular weight: ", result.MW)  # MW is deprecated, use molecular_weight
+println("Critical angles: ", result.Critical_Angle)  # Critical_Angle is deprecated, use critical_angle
+println("Attenuation lengths: ", result.Attenuation_Length)  # Attenuation_Length is deprecated, use attenuation_length
 '''
 """
-function SubRefrac(formulaStr::String, energy::Vector{Float64}, massDensity::Float64)
+function SubRefrac(formulaStr::String, energies_keV::Vector{Float64}, massDensity::Float64)
     # ==================================================================================
     # FORMULA PARSING AND ATOMIC DATA LOOKUP
     # ==================================================================================
@@ -508,7 +578,7 @@ function SubRefrac(formulaStr::String, energy::Vector{Float64}, massDensity::Flo
     # Parse the chemical formula into elements and their counts
     element_symbols, element_counts = parse_formula(formulaStr)
     n_elements = length(element_symbols)
-    n_energies = length(energy)
+    n_energies = length(energies_keV)
 
     # Pre-allocate arrays for efficiency
     molecular_weight = 0.0
@@ -517,7 +587,7 @@ function SubRefrac(formulaStr::String, energy::Vector{Float64}, massDensity::Flo
 
     # Look up atomic data for each element in the formula
     for i in 1:n_elements
-        atomic_number, atomic_mass = get_atomic_data(element_symbols[i])
+        atomic_number, atomic_mass = atomic_number_and_mass(element_symbols[i])
         atomic_data[i] = (atomic_number, atomic_mass)
 
         # Accumulate molecular weight and total electrons
@@ -531,18 +601,18 @@ function SubRefrac(formulaStr::String, energy::Vector{Float64}, massDensity::Flo
 
     # Convert X-ray energies (KeV) to wavelengths (m)
     # λ = hc/E, where h = Planck constant, c = speed of light
-    wavelength = ENERGY_TO_WAVELENGTH_FACTOR ./ energy
+    wavelengths_m = HC_OVER_ELECTRON_CHARGE_keV ./ energies_keV
 
     # Convert energies to eV for scattering factor interpolation
-    energy_ev = energy .* 1000.0
+    energies_eV = energies_keV .* 1000.0
 
     # ==================================================================================
     # ARRAY INITIALIZATION
     # ==================================================================================
 
     # Pre-allocate output arrays with zeros
-    dispersion = zeros(Float64, n_energies)      # δ (dispersion coefficient)
-    absorption = zeros(Float64, n_energies)      # β (absorption coefficient)
+    delta = zeros(Float64, n_energies)      # δ (dispersion coefficient)
+    beta = zeros(Float64, n_energies)      # β (absorption coefficient)
     f1_total = zeros(Float64, n_energies)        # Total f1 (real scattering factor)
     f2_total = zeros(Float64, n_energies)        # Total f2 (imaginary scattering factor)
 
@@ -555,10 +625,10 @@ function SubRefrac(formulaStr::String, energy::Vector{Float64}, massDensity::Flo
 
     for i in 1:n_elements
         # Load f1, f2 table for this element
-        table = load_f1f2_table(element_symbols[i])
+        table = load_scattering_factor_table(element_symbols[i])
 
         # Create interpolators for smooth interpolation between tabulated values
-        itp1, itp2 = create_interpolators(table.E, table.f1, table.f2)
+        itp1, itp2 = pchip_interpolators(table.E, table.f1, table.f2)
 
         # Store element count and interpolators
         element_data[i] = (element_counts[i], itp1, itp2)
@@ -570,14 +640,14 @@ function SubRefrac(formulaStr::String, energy::Vector{Float64}, massDensity::Flo
 
     # Calculate dispersion, absorption, and total scattering factors
     # This is the computationally intensive part
-    calculate_scattering_factors!(
-        energy_ev,
-        wavelength,
+    accumulate_optical_coefficients!(
+        energies_eV,
+        wavelengths_m,
         massDensity,
         molecular_weight,
         element_data,
-        dispersion,
-        absorption,
+        delta,
+        beta,
         f1_total,
         f2_total,
     )
@@ -593,19 +663,19 @@ function SubRefrac(formulaStr::String, energy::Vector{Float64}, massDensity::Flo
 
     # Calculate critical angle for total external reflection
     # θc = √(2δ) (in radians), converted to degrees
-    critical_angle = sqrt.(2 .* dispersion) .* (180 / π)
+    critical_angle = sqrt.(2 .* delta) .* (180 / π)
 
     # Calculate X-ray attenuation length
     # 1/e attenuation length = λ/(4πβ) (in cm)
-    attenuation_length = wavelength ./ absorption ./ (4 * π) .* 1e2
+    attenuation_length = wavelengths_m ./ beta ./ (4 * π) .* 1e2
 
     # Calculate scattering length densities (SLD)
     # SLD = 2π × (δ + iβ) / λ² (in units of Å⁻²)
-    wavelength_sq = wavelength .^ 2
+    wavelengths_m_sq = wavelengths_m .^ 2
     sld_factor = 2 * π / 1e20  # Conversion factor to Å⁻²
 
-    re_sld = dispersion .* sld_factor ./ wavelength_sq  # Real part of SLD
-    im_sld = absorption .* sld_factor ./ wavelength_sq  # Imaginary part of SLD
+    re_sld = delta .* sld_factor ./ wavelengths_m_sq  # Real part of SLD
+    im_sld = beta .* sld_factor ./ wavelengths_m_sq  # Imaginary part of SLD
 
     # ==================================================================================
     # RESULT ASSEMBLY
@@ -618,10 +688,10 @@ function SubRefrac(formulaStr::String, energy::Vector{Float64}, massDensity::Flo
         number_of_electrons,           # Electrons per molecule
         massDensity,                   # Mass density (g/cm³)
         electron_density,              # Electron density (1/Å³)
-        energy,                        # X-ray energy (KeV)
-        wavelength .* 1e10,            # Wavelength (Å)
-        dispersion,                    # Dispersion coefficient
-        absorption,                    # Absorption coefficient
+        energies_keV,                        # X-ray energy (KeV)
+        wavelengths_m .* 1e10,            # Wavelength (Å)
+        delta,                    # Dispersion coefficient
+        beta,                    # Absorption coefficient
         f1_total,                      # Total f1
         f2_total,                      # Total f2
         critical_angle,                # Critical angle (degrees)
@@ -629,6 +699,83 @@ function SubRefrac(formulaStr::String, energy::Vector{Float64}, massDensity::Flo
         re_sld,                        # Real SLD (Å⁻²)
         im_sld,                         # Imaginary SLD (Å⁻²)
     )
+end
+
+# =====================================================================================
+# NEW API FUNCTIONS WITH DESCRIPTIVE NAMES
+# =====================================================================================
+
+"""
+    calculate_xray_properties(formulaList, energy, massDensityList) -> Dict{String, XRayResult}
+
+Calculate X-ray optical properties for multiple chemical formulas (vector interface).
+
+This is the new API name that replaces `Refrac`. It provides the same functionality
+with a more descriptive name.
+
+# Arguments
+- `formulaList::Vector{String}`: List of chemical formulas
+- `energy::Vector{Float64}`: X-ray energies in KeV (0.03 - 30 KeV)
+- `massDensityList::Vector{Float64}`: Mass densities in g/cm³
+
+# Returns
+- `Dict{String, XRayResult}`: Dictionary mapping formula strings to results
+
+# Examples
+```julia
+# Calculate properties for multiple materials
+formulas = ["SiO2", "Al2O3", "Fe2O3"]
+energies = [8.0, 10.0, 12.0, 15.0]
+densities = [2.2, 3.95, 5.24]
+
+results = calculate_xray_properties(formulas, energies, densities)
+
+# Access results for specific material
+sio2_result = results["SiO2"]
+println("SiO2 molecular weight: ", sio2_result.molecular_weight)
+```
+"""
+function calculate_xray_properties(
+    formulaList::Vector{String},
+    energy::Vector{Float64},
+    massDensityList::Vector{Float64},
+)
+    return Refrac(formulaList, energy, massDensityList)
+end
+
+"""
+    calculate_single_material_properties(formulaStr, energy, massDensity) -> XRayResult
+
+Calculate X-ray optical properties for a single chemical formula.
+
+This is the new API name that replaces `SubRefrac`. It provides the same functionality
+with a more descriptive name.
+
+# Arguments
+- `formulaStr::String`: Chemical formula (e.g., "SiO2", "Al2O3")
+- `energy::Vector{Float64}`: X-ray energies in KeV
+- `massDensity::Float64`: Mass density in g/cm³
+
+# Returns
+- `XRayResult`: Complete set of calculated optical properties
+
+# Examples
+```julia
+# Calculate properties for quartz at multiple energies
+result = calculate_single_material_properties("SiO2", [8.0, 10.0, 12.0], 2.2)
+
+# Access specific properties
+println("Molecular weight: ", result.molecular_weight)
+println("Critical angles: ", result.critical_angle)
+println("Attenuation lengths: ", result.attenuation_length)
+```
+"""
+function calculate_single_material_properties(
+    formulaStr::String,
+    energy::Vector{Float64},
+    massDensity::Float64,
+)
+    return SubRefrac(formulaStr, energy, massDensity)
 end
 
 # =====================================================================================
@@ -655,5 +802,84 @@ function clear_caches!()
     empty!(F1F2_TABLE_CACHE)
     println("Caches cleared - memory freed")
 end
+
+# =====================================================================================
+# DEPRECATED ALIASES
+# =====================================================================================
+
+# Deprecated aliases for backward compatibility
+# These will issue deprecation warnings when used
+
+"""
+    get_atomic_data(element_symbol::String) -> (Int, Float64)
+
+**DEPRECATED**: Use `atomic_number_and_mass` instead.
+"""
+function get_atomic_data(element_symbol::String)
+    @warn "get_atomic_data is deprecated, use atomic_number_and_mass instead" maxlog=1
+    return atomic_number_and_mass(element_symbol)
+end
+
+"""
+    load_f1f2_table(element_symbol::String) -> DataFrame
+
+**DEPRECATED**: Use `load_scattering_factor_table` instead.
+"""
+function load_f1f2_table(element_symbol::String)
+    @warn "load_f1f2_table is deprecated, use load_scattering_factor_table instead" maxlog=1
+    return load_scattering_factor_table(element_symbol)
+end
+
+"""
+    create_interpolators(energy_table, f1_table, f2_table) -> (Interpolator, Interpolator)
+
+**DEPRECATED**: Use `pchip_interpolators` instead.
+"""
+function create_interpolators(
+    energy_table::Vector{Float64},
+    f1_table::Vector{Float64},
+    f2_table::Vector{Float64},
+)
+    @warn "create_interpolators is deprecated, use pchip_interpolators instead" maxlog=1
+    return pchip_interpolators(energy_table, f1_table, f2_table)
+end
+
+"""
+    calculate_scattering_factors!(...)
+
+**DEPRECATED**: Use `accumulate_optical_coefficients!` instead.
+"""
+function calculate_scattering_factors!(
+    energy_ev::Vector{Float64},
+    wavelength::Vector{Float64},
+    mass_density::Float64,
+    molecular_weight::Float64,
+    element_data::Vector{Tuple{Float64, Any, Any}},
+    dispersion::Vector{Float64},
+    absorption::Vector{Float64},
+    f1_total::Vector{Float64},
+    f2_total::Vector{Float64},
+)
+    @warn "calculate_scattering_factors! is deprecated, use accumulate_optical_coefficients! instead" maxlog=1
+    return accumulate_optical_coefficients!(
+        energy_ev,
+        wavelength,
+        mass_density,
+        molecular_weight,
+        element_data,
+        dispersion,
+        absorption,
+        f1_total,
+        f2_total,
+    )
+end
+
+# =====================================================================================
+# MAIN API DEPRECATION WARNINGS
+# =====================================================================================
+
+# Deprecate old function names in favor of new descriptive names
+@deprecate Refrac calculate_xray_properties
+@deprecate SubRefrac calculate_single_material_properties
 
 end  # module
