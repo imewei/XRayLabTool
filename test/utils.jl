@@ -46,12 +46,12 @@ c = [1.0, 2.0]
 @test !approx_vec(a, c)
 ```
 """
-function approx_vec(a, b; atol=1e-8, rtol=1e-5)
+function approx_vec(a, b; atol = 1e-8, rtol = 1e-5)
     # Check if vectors have the same length
     length(a) == length(b) || return false
-    
+
     # Check element-wise approximation
-    return all(isapprox(ai, bi, atol=atol, rtol=rtol) for (ai, bi) in zip(a, b))
+    return all(isapprox(ai, bi, atol = atol, rtol = rtol) for (ai, bi) in zip(a, b))
 end
 
 # Note: The requested ≈_vec function is implemented as approx_vec
@@ -91,7 +91,7 @@ result = with_cleared_caches(some_test_function)
 function with_cleared_caches(f)
     # Clear all caches before executing the function
     XRayLabTool.clear_caches!()
-    
+
     # Execute the provided function and return its result
     return f()
 end
@@ -129,25 +129,25 @@ macro expect_error(expr, msg_pattern)
     quote
         local exception_caught = false
         local caught_exception = nothing
-        
+
         try
             $(esc(expr))
         catch e
             exception_caught = true
             caught_exception = e
         end
-        
+
         # Assert that an exception was thrown
         if !exception_caught
             error("Expected an exception to be thrown, but none was caught")
         end
-        
+
         # Convert message pattern to Regex if it's a string
         local pattern = $(esc(msg_pattern))
         if pattern isa String
             pattern = Regex(pattern)
         end
-        
+
         # Get the exception message - handle different exception types
         local exception_msg = if caught_exception isa String
             caught_exception
@@ -156,12 +156,12 @@ macro expect_error(expr, msg_pattern)
         else
             string(caught_exception)
         end
-        
+
         # Test that the message matches the pattern
         if !occursin(pattern, exception_msg)
             error("Exception message \"$exception_msg\" does not match pattern $pattern")
         end
-        
+
         # Return true if successful
         true
     end

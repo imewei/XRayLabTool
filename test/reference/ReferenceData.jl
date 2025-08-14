@@ -53,11 +53,15 @@ metadata = si_data["metadata"]
 au_data = load_optical_constants("Au", format="csv")
 ```
 """
-function load_optical_constants(material::String; format::String="json")
+function load_optical_constants(material::String; format::String = "json")
     if !(material in get_available_materials())
-        throw(ArgumentError("Material '$material' not available. Available: $(get_available_materials())"))
+        throw(
+            ArgumentError(
+                "Material '$material' not available. Available: $(get_available_materials())",
+            ),
+        )
     end
-    
+
     if format == "json"
         return load_json_data(material)
     elseif format == "csv"
@@ -74,11 +78,11 @@ Load optical constants from JSON file with full metadata.
 """
 function load_json_data(material::String)
     filepath = joinpath(REFERENCE_DIR, "$(material)_optical_constants.json")
-    
+
     if !isfile(filepath)
         throw(ArgumentError("Reference data file not found: $filepath"))
     end
-    
+
     return JSON3.read(read(filepath, String), Dict)
 end
 
@@ -89,18 +93,14 @@ Load optical constants from CSV file and return as dictionary.
 """
 function load_csv_data(material::String)
     filepath = joinpath(REFERENCE_DIR, "$(material)_optical_constants.csv")
-    
+
     if !isfile(filepath)
         throw(ArgumentError("Reference data file not found: $filepath"))
     end
-    
+
     df = CSV.read(filepath, DataFrame)
-    
-    return Dict(
-        "energy_keV" => df.energy_keV,
-        "f1" => df.f1,
-        "f2" => df.f2
-    )
+
+    return Dict("energy_keV" => df.energy_keV, "f1" => df.f1, "f2" => df.f2)
 end
 
 """
@@ -122,18 +122,18 @@ si_data = all_data["Si"]
 au_data = all_data["Au"]
 ```
 """
-function load_all_materials(; format::String="json")
+function load_all_materials(; format::String = "json")
     materials = get_available_materials()
     data = Dict{String, Dict}()
-    
+
     for material in materials
         try
-            data[material] = load_optical_constants(material, format=format)
+            data[material] = load_optical_constants(material, format = format)
         catch e
             @warn "Failed to load data for $material: $e"
         end
     end
-    
+
     return data
 end
 
@@ -147,7 +147,7 @@ function get_edge_energies()
         "Si" => 1.838,    # Si K-edge
         "Au" => 11.919,   # Au L3-edge (more relevant for X-ray work)
         "O" => 0.532,     # O K-edge (for SiO2 and H2O)
-        "H" => 0.0136     # H K-edge (for H2O)
+        "H" => 0.0136,     # H K-edge (for H2O)
     )
 end
 
@@ -161,7 +161,7 @@ function get_material_properties()
         "Si" => Dict("Z" => 14, "density_g_cm3" => 2.33, "formula" => "Si"),
         "SiO2" => Dict("Z_eff" => 10.0, "density_g_cm3" => 2.65, "formula" => "SiO2"),
         "H2O" => Dict("Z_eff" => 7.4, "density_g_cm3" => 1.00, "formula" => "H2O"),
-        "Au" => Dict("Z" => 79, "density_g_cm3" => 19.32, "formula" => "Au")
+        "Au" => Dict("Z" => 79, "density_g_cm3" => 19.32, "formula" => "Au"),
     )
 end
 
