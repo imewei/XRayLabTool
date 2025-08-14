@@ -108,8 +108,8 @@ Caches for performance optimization:
 - ATOMIC_DATA_CACHE: Stores (atomic_number, atomic_mass) for elements
 - F1F2_TABLE_CACHE: Stores loaded atomic scattering factor tables
 """
-const ATOMIC_DATA_CACHE = Dict{String,Tuple{Int,Float64}}()
-const F1F2_TABLE_CACHE = Dict{String,DataFrame}()
+const ATOMIC_DATA_CACHE = Dict{String, Tuple{Int, Float64}}()
+const F1F2_TABLE_CACHE = Dict{String, DataFrame}()
 
 # =====================================================================================
 # HELPER FUNCTIONS
@@ -260,7 +260,11 @@ Create PCHIP interpolators for atomic scattering factors f1 and f2.
 Uses PCHIP (Piecewise Cubic Hermite Interpolating Polynomial) for smooth interpolation
 while preserving monotonicity in the data.
 """
-function create_interpolators(energy_table::Vector{Float64}, f1_table::Vector{Float64}, f2_table::Vector{Float64})
+function create_interpolators(
+    energy_table::Vector{Float64},
+    f1_table::Vector{Float64},
+    f2_table::Vector{Float64},
+)
     itp1 = Interpolator(energy_table, f1_table)
     itp2 = Interpolator(energy_table, f2_table)
     return itp1, itp2
@@ -304,11 +308,11 @@ function calculate_scattering_factors!(
     wavelength::Vector{Float64},
     mass_density::Float64,
     molecular_weight::Float64,
-    element_data::Vector{Tuple{Float64,Any,Any}}, # (count, itp1, itp2)
+    element_data::Vector{Tuple{Float64, Any, Any}}, # (count, itp1, itp2)
     dispersion::Vector{Float64},
     absorption::Vector{Float64},
     f1_total::Vector{Float64},
-    f2_total::Vector{Float64}
+    f2_total::Vector{Float64},
 )
     n_energies = length(energy_ev)
 
@@ -422,7 +426,7 @@ function Refrac(
     energy_sorted = sort(energy)
 
     # Pre-allocate results dictionary
-    results = Dict{String,XRayResult}()
+    results = Dict{String, XRayResult}()
 
     # Thread-safe lock for dictionary access
     results_lock = ReentrantLock()
@@ -509,7 +513,7 @@ function SubRefrac(formulaStr::String, energy::Vector{Float64}, massDensity::Flo
     # Pre-allocate arrays for efficiency
     molecular_weight = 0.0
     number_of_electrons = 0.0
-    atomic_data = Vector{Tuple{Int,Float64}}(undef, n_elements)
+    atomic_data = Vector{Tuple{Int, Float64}}(undef, n_elements)
 
     # Look up atomic data for each element in the formula
     for i in 1:n_elements
@@ -547,7 +551,7 @@ function SubRefrac(formulaStr::String, energy::Vector{Float64}, massDensity::Flo
     # ==================================================================================
 
     # Load atomic scattering factor tables and create interpolators
-    element_data = Vector{Tuple{Float64,Any,Any}}(undef, n_elements)
+    element_data = Vector{Tuple{Float64, Any, Any}}(undef, n_elements)
 
     for i in 1:n_elements
         # Load f1, f2 table for this element
@@ -567,8 +571,15 @@ function SubRefrac(formulaStr::String, energy::Vector{Float64}, massDensity::Flo
     # Calculate dispersion, absorption, and total scattering factors
     # This is the computationally intensive part
     calculate_scattering_factors!(
-        energy_ev, wavelength, massDensity, molecular_weight,
-        element_data, dispersion, absorption, f1_total, f2_total
+        energy_ev,
+        wavelength,
+        massDensity,
+        molecular_weight,
+        element_data,
+        dispersion,
+        absorption,
+        f1_total,
+        f2_total,
     )
 
     # ==================================================================================
@@ -577,7 +588,8 @@ function SubRefrac(formulaStr::String, energy::Vector{Float64}, massDensity::Flo
 
     # Calculate electron density (electrons per unit volume)
     # ρₑ = ρ × Nₐ × Z / M × 10⁻³⁰ (converted to electrons/Å³)
-    electron_density = 1e6 * massDensity / molecular_weight * AVOGADRO * number_of_electrons / 1e30
+    electron_density =
+        1e6 * massDensity / molecular_weight * AVOGADRO * number_of_electrons / 1e30
 
     # Calculate critical angle for total external reflection
     # θc = √(2δ) (in radians), converted to degrees
@@ -615,7 +627,7 @@ function SubRefrac(formulaStr::String, energy::Vector{Float64}, massDensity::Flo
         critical_angle,                # Critical angle (degrees)
         attenuation_length,            # Attenuation length (cm)
         re_sld,                        # Real SLD (Å⁻²)
-        im_sld                         # Imaginary SLD (Å⁻²)
+        im_sld,                         # Imaginary SLD (Å⁻²)
     )
 end
 
