@@ -1,0 +1,81 @@
+# Changelog
+
+All notable changes to this project are documented here.
+Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), adhering to [Semantic Versioning](https://semver.org/).
+
+## [0.6.0] - 2026-03-28
+
+### Breaking
+- Removed `CSV.jl` and `DataFrames.jl` dependencies (replaced with zero-dependency file parsing)
+- Internal `F1F2_TABLE_CACHE` replaced with `INTERPOLATOR_CACHE` (caches interpolator pairs directly)
+- Removed internal functions: `load_scattering_factor_table`, `pchip_interpolators`, `create_interpolators`
+
+### Performance
+- 4.5x faster precompilation (62 to 24 transitive packages)
+- 3.6x faster single-material calculations (cached interpolators, fused computation loops)
+- 4x fewer allocations per call (19 KB vs 80 KB for 191 energy points)
+- Lock-free cache reads on warm-cache path (zero allocation on cache hits)
+- `@threads :dynamic` scheduling for better load balancing in batch mode
+- Non-allocating energy range validation
+- Type-stable hot loop via concrete `ElementInterpolatorData` type alias
+
+### Fixed
+- Data race: element caches now pre-populated before `@threads` loop entry
+- Fluorine data file (`f.nff`) typo: first energy was 129.3 instead of 29.3
+- Energy range validation added to single-material path (previously only batch path validated)
+- Circular deprecation architecture: `@deprecate` macros replaced with explicit `depwarn` wrappers
+
+### Added
+- `Base.propertynames` override for tab-completion on `XRayResult`
+- Documenter.jl documentation site with physics background, API reference, and migration guide
+- Consolidated CI pipeline with multi-threaded testing, formatting checks, and documentation deployment
+- 357 tests (up from ~80): physical constants, numerical sanity, scaling properties, physics cross-validation, property-based formula parsing, performance regression guards
+
+### Changed
+- `Dict`-based `getproperty` with O(1) lookup replaces O(n) if-elseif chain
+- Narrowed imports: `using Unitful: ustrip`, `using Base.Threads: @threads`
+- SemVer-compatible compat bounds in Project.toml
+- Batch results collected via lock-free `Vector` indexed writes instead of `Dict` + `ReentrantLock`
+
+## [0.5.0] - 2025-03-28
+
+### Added
+- New descriptive API:
+  - `calculate_xray_properties` replaces `Refrac` (multiple materials)
+  - `calculate_single_material_properties` replaces `SubRefrac` (single material)
+- New snake_case field names on `XRayResult` (see table below)
+- Backward-compatible `getproperty` override: old field names still work
+- Multi-threaded batch processing via `@threads`
+- Comprehensive docstrings on all public and internal functions
+
+### Deprecated
+- `Refrac()` — use `calculate_xray_properties()` instead
+- `SubRefrac()` — use `calculate_single_material_properties()` instead
+- Old field names (still accessible, will continue to work):
+
+| Old (deprecated) | New (recommended) |
+|---|---|
+| `Formula` | `formula` |
+| `MW` | `molecular_weight` |
+| `Number_Of_Electrons` | `number_of_electrons` |
+| `Density` | `mass_density` |
+| `Electron_Density` | `electron_density` |
+| `Energy` | `energy` |
+| `Wavelength` | `wavelength` |
+| `Dispersion` | `dispersion` |
+| `Absorption` | `absorption` |
+| `Critical_Angle` | `critical_angle` |
+| `Attenuation_Length` | `attenuation_length` |
+| `reSLD` | `real_sld` |
+| `imSLD` | `imag_sld` |
+
+Note: `f1` and `f2` are unchanged.
+
+## [0.4.0]
+
+### Added
+- Initial public release
+- Core X-ray property calculations based on CXRO/Henke tables
+- Support for all elements H through U, 30 eV to 30 keV
+- Caching system for atomic data and scattering factor tables
+- `Refrac` (batch) and `SubRefrac` (single material) API
