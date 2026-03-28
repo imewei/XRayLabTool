@@ -2,6 +2,8 @@ using XRayLabTool
 using Test
 include("utils.jl")
 using .Main: @expect_error
+include("formula_parsing.jl")
+include("test_edge_cases.jl")
 
 # Test constants
 const DEFAULT_TOL = 1e-6
@@ -223,8 +225,14 @@ end
         end
 
         @testset "Single Material Function Error Handling" begin
-            # Single material function doesn't have explicit energy range validation,
-            # but we can test invalid formulas and edge cases
+            # Test energy range validation on single-material path
+            @testset "Single material energy below 0.03 keV" begin
+                @expect_error calculate_single_material_properties("SiO2", [0.01], 2.2) r"Energy is out of range.*0\.03KeV.*30KeV"
+            end
+
+            @testset "Single material energy above 30 keV" begin
+                @expect_error calculate_single_material_properties("SiO2", [50.0], 2.2) r"Energy is out of range.*0\.03KeV.*30KeV"
+            end
 
             # Test invalid chemical formula
             @testset "Invalid chemical formula" begin
@@ -294,14 +302,16 @@ end
     # =====================================================================================
 
     @testset "Legacy API Compatibility Tests" begin
-        @testset "Legacy Function Names Still Work" begin
-            # Test that old function names still work 
-            @test_nowarn data_legacy = Refrac(MATERIALS, ENERGIES, DENSITIES)
-            @test_nowarn si_legacy = SubRefrac("Si", [20.0], 2.33)
+        @testset "Legacy Function Names Issue Deprecation Warnings" begin
+            # Test that old function names issue deprecation warnings
+            @test_deprecated data_legacy = Refrac(MATERIALS, ENERGIES, DENSITIES)
+            @test_deprecated si_legacy = SubRefrac("Si", [20.0], 2.33)
+        end
 
+        @testset "Legacy Results Match New API" begin
             # Compare results between old and new APIs
             data_new = calculate_xray_properties(MATERIALS, ENERGIES, DENSITIES)
-            data_legacy = Refrac(MATERIALS, ENERGIES, DENSITIES)
+            data_legacy = @test_deprecated Refrac(MATERIALS, ENERGIES, DENSITIES)
 
             # Results should be identical
             @test haskey(data_new, "SiO2") && haskey(data_legacy, "SiO2")
@@ -310,7 +320,7 @@ end
 
             # Test single material functions
             si_new = calculate_single_material_properties("Si", [20.0], 2.33)
-            si_legacy = SubRefrac("Si", [20.0], 2.33)
+            si_legacy = @test_deprecated SubRefrac("Si", [20.0], 2.33)
 
             @test si_new.dispersion ≈ si_legacy.dispersion
             @test si_new.f1 ≈ si_legacy.f1
@@ -354,7 +364,7 @@ end
 
         @testset "Legacy Tests Using Old Field Names" begin
             # Run some original tests using old field names to ensure backward compatibility
-            data = Refrac(MATERIALS, ENERGIES, DENSITIES)
+            data = @test_deprecated Refrac(MATERIALS, ENERGIES, DENSITIES)
             sio2 = data["SiO2"]
 
             # Expected values for SiO2 (same as before)
@@ -384,23 +394,6 @@ end
                 end
             end
         end
-    end
-end
-
-# Optional: Add a function to run tests with custom tolerance
-function run_tests_with_tolerance(tol::Float64 = DEFAULT_TOL)
-    # Temporarily modify the default tolerance
-    original_tol = DEFAULT_TOL
-    global DEFAULT_TOL = tol
-
-    try
-        # Run the test suite
-        return Test.run(@testset "XRayLabTool.jl Tests" begin
-            # Include all the test code here if needed
-        end)
-    finally
-        # Restore original tolerance
-        global DEFAULT_TOL = original_tol
     end
 end
 
