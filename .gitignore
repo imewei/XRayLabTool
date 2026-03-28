@@ -32,5 +32,5 @@ JuliaLocalPreferences.toml
 # Coverage reports and build artifacts
 coverage*
 *.html
-
+CLAUDE.md
 .serena/
