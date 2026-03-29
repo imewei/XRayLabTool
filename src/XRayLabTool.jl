@@ -341,11 +341,11 @@ function _parse_group(s::String, pos::Int)
             # End of current group — return to caller
             return elements, counts, pos
 
-        elseif isuppercase(c)
-            # Parse element symbol: uppercase + optional lowercase
+        elseif isuppercase(c) && isascii(c)
+            # Parse element symbol: uppercase ASCII + optional lowercase ASCII
             sym_start = pos
             pos += 1
-            while pos <= lastindex(s) && islowercase(s[pos])
+            while pos <= lastindex(s) && islowercase(s[pos]) && isascii(s[pos])
                 pos += 1
             end
             symbol = s[sym_start:prevind(s, pos)]
@@ -409,6 +409,11 @@ function load_element_interpolators(element_symbol::String)
         get(INTERPOLATOR_CACHE, element_symbol, nothing)
     end
     cached !== nothing && return cached
+
+    # Reject non-ASCII symbols before constructing file paths
+    if !all(isascii, element_symbol)
+        throw(ArgumentError("Element $element_symbol contains non-ASCII characters"))
+    end
 
     # Construct filename (lowercase element symbol + .nff extension)
     fname = lowercase(element_symbol) * ".nff"
