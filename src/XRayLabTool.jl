@@ -147,8 +147,8 @@ const SCATTERING_PREFACTOR = THOMSON_SCATTERING_LENGTH * AVOGADRO * 1e6 / (2 * �
 const KEV_TO_EV = 1000.0
 const M_TO_ANGSTROM = 1e10
 const M_TO_CM = 1e2
-const NS_TO_MS = 1e6
-const ELECTRON_DENSITY_FACTOR = AVOGADRO * 1e6 / 1e30  # mol⁻¹·cm³→Å³
+const NS_PER_MS = 1e6
+const ELECTRON_DENSITY_FACTOR = AVOGADRO * 1e6 / 1e30  # Nₐ × (cm³→m³) / (m³→ų): converts (ρ/M)·Z to electrons/ų
 const SLD_FACTOR = 2 * π / 1e20                          # Å⁻² conversion
 
 # Deprecation bridges for backward compatibility
@@ -172,7 +172,8 @@ const ATOMIC_DATA_LOCK = ReentrantLock()
 const INTERPOLATOR_CACHE = Dict{String, Tuple{PCHIPInterp, PCHIPInterp}}()
 const INTERPOLATOR_LOCK = ReentrantLock()
 # When true, caches are fully populated and can be read without locks.
-# Set to true after _validate_formulas completes; reset by clear_caches!.
+# Set to true after _validate_formulas completes (batch path only); reset by clear_caches!.
+# Single-material calls always use the locked read path since they don't call _validate_formulas.
 const CACHES_FROZEN = Threads.Atomic{Bool}(false)
 
 # =====================================================================================
@@ -507,7 +508,7 @@ function load_element_interpolators(element_symbol::String)
         end
         itp_f1 = Interpolator(energy, f1_data)
         itp_f2 = Interpolator(energy, f2_data)
-        elapsed_io_ms = (time_ns() - t_io) / NS_TO_MS
+        elapsed_io_ms = (time_ns() - t_io) / NS_PER_MS
         @debug "Loaded .nff file" _group = :io element = element_symbol data_points = n elapsed_ms =
             round(elapsed_io_ms; digits = 3)
     catch e
@@ -690,7 +691,7 @@ function _calculate_xray_properties_impl(
 
     t_validate = time_ns()
     _validate_formulas(formulaList)
-    elapsed_validate_ms = (time_ns() - t_validate) / NS_TO_MS
+    elapsed_validate_ms = (time_ns() - t_validate) / NS_PER_MS
     @debug "Validation + cache warm-up complete" _group = :batch elapsed_ms =
         round(elapsed_validate_ms; digits = 3)
 
@@ -710,11 +711,11 @@ function _calculate_xray_properties_impl(
             _validated = true,
         )
     end
-    elapsed_parallel_ms = (time_ns() - t_parallel) / NS_TO_MS
+    elapsed_parallel_ms = (time_ns() - t_parallel) / NS_PER_MS
     @debug "Parallel computation complete" _group = :batch elapsed_ms =
         round(elapsed_parallel_ms; digits = 3)
 
-    elapsed_total_ms = (time_ns() - t_batch_start) / NS_TO_MS
+    elapsed_total_ms = (time_ns() - t_batch_start) / NS_PER_MS
     @debug "Batch calculation complete" _group = :batch result_count = n_formulas elapsed_ms =
         round(elapsed_total_ms; digits = 3)
 
@@ -838,7 +839,7 @@ function _calculate_single_material_impl(
         _compute_derived_quantities(wavelengths_m, delta, beta)
 
     @debug "Derived quantities computed" _group = :computation formula = formulaStr electron_density =
-        round(electron_density; sigdigits = 6) critical_angle_range =
+        () -> round(electron_density; sigdigits = 6) critical_angle_range =
         () ->
             "($(round(minimum(critical_angle); sigdigits=4)), $(round(maximum(critical_angle); sigdigits=4)))" attenuation_length_range =
         () ->
@@ -849,7 +850,7 @@ function _calculate_single_material_impl(
         () -> "($(minimum(beta)), $(maximum(beta)))" sld_range =
         () -> "($(minimum(re_sld)), $(maximum(re_sld)))"
 
-    elapsed_ms = (time_ns() - t_start) / NS_TO_MS
+    elapsed_ms = (time_ns() - t_start) / NS_PER_MS
     @debug "Material calculation complete" _group = :computation formula = formulaStr MW =
         round(molecular_weight; digits = 3) energy_count = n_energies elapsed_ms =
         round(elapsed_ms; digits = 3)
@@ -961,13 +962,16 @@ clear_caches!()
 '''
 """
 function clear_caches!()
-    CACHES_FROZEN[] = false
+    # Empty caches under lock BEFORE clearing the frozen flag.
+    # This prevents a race where another thread reads CACHES_FROZEN==true
+    # and then does a lock-free get() on a Dict being emptied concurrently.
     lock(ATOMIC_DATA_LOCK) do
         empty!(ATOMIC_DATA_CACHE)
     end
     lock(INTERPOLATOR_LOCK) do
         empty!(INTERPOLATOR_CACHE)
     end
+    CACHES_FROZEN[] = false
     @debug "Caches cleared" _group = :cache
 end
 
