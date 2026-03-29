@@ -20,6 +20,7 @@ for XRayLabTool. Covers gaps not addressed by the existing test suite:
 """
 
 using Test
+using Logging
 using XRayLabTool
 
 # =======================================================================================
@@ -632,5 +633,28 @@ end
         per_call_us = t * 1e6 / 100
         # Should complete in under 500µs per call (currently ~25µs)
         @test per_call_us < 500
+    end
+end
+
+# =======================================================================================
+# 16. LOGGING DOES NOT BREAK FUNCTIONALITY
+# =======================================================================================
+
+@testset "Logging with debug enabled" begin
+    # Enable debug logging and verify calculations still produce correct results
+    test_logger = Logging.ConsoleLogger(devnull, Logging.Debug)
+    Logging.with_logger(test_logger) do
+        result = calculate_single_material_properties("SiO2", [8.0, 10.0], 2.2)
+        @test result.formula == "SiO2"
+        @test result.molecular_weight > 0
+        @test all(isfinite, result.dispersion)
+
+        batch = calculate_xray_properties(["Si", "Au"], [8.0], [2.33, 19.3])
+        @test length(batch) == 2
+        @test batch[1].formula == "Si"
+
+        XRayLabTool.clear_caches!()
+        result2 = calculate_single_material_properties("H2O", [8.0], 1.0)
+        @test result2.formula == "H2O"
     end
 end

@@ -52,6 +52,7 @@ The functions return XRayResult struct(s) containing:
 """
 module XRayLabTool
 
+using Logging
 using PCHIPInterpolation
 using Mendeleev: chem_elements
 using Unitful: ustrip
@@ -171,6 +172,8 @@ const INTERPOLATOR_LOCK = ReentrantLock()
     if any(e -> e < 0.03 || e > 30.0, energies_keV)
         throw(ArgumentError("Energy is out of range 0.03KeV ~ 30KeV"))
     end
+    @debug "Energy range validated" _group = :validation count = length(energies_keV) min_keV =
+        minimum(energies_keV) max_keV = maximum(energies_keV)
 end
 
 """Validate all formulas upfront. Throws ArgumentError listing all invalid formulas."""
@@ -188,6 +191,8 @@ function _validate_formulas(formulaList::Vector{String})
         end
     end
     if !isempty(invalid)
+        @debug "Formula validation failed" _group = :validation invalid_formulas =
+            join(invalid, ", ") invalid_count = length(invalid)
         throw(
             ArgumentError(
                 "Invalid formulas: $(join(invalid, ", ")). " *
@@ -195,6 +200,7 @@ function _validate_formulas(formulaList::Vector{String})
             ),
         )
     end
+    @debug "All formulas validated" _group = :validation formula_count = length(formulaList)
 end
 
 # =====================================================================================
@@ -221,7 +227,11 @@ function atomic_number_and_mass(element_symbol::String)
     cached = lock(ATOMIC_DATA_LOCK) do
         get(ATOMIC_DATA_CACHE, element_symbol, nothing)
     end
-    cached !== nothing && return cached
+    if cached !== nothing
+        @debug "Atomic data cache hit" _group = :cache element = element_symbol Z =
+            cached[1] mass = cached[2]
+        return cached
+    end
 
     # Search periodic table for element
     local atomic_number::Int
@@ -240,6 +250,8 @@ function atomic_number_and_mass(element_symbol::String)
     lock(ATOMIC_DATA_LOCK) do
         ATOMIC_DATA_CACHE[element_symbol] = result
     end
+    @debug "Atomic data cache miss → stored" _group = :cache element = element_symbol Z =
+        atomic_number mass = atomic_mass
 
     return result
 end
@@ -274,6 +286,7 @@ symbols, counts = parse_formula("Ca3(PO4)2")
 - 'ArgumentError': If formula string is invalid or empty
 """
 function parse_formula(formulaStr::String)
+    @debug "Parsing formula" _group = :parser input = formulaStr
     if isempty(formulaStr)
         throw(ArgumentError("Invalid chemical formula: empty string"))
     end
@@ -292,6 +305,8 @@ function parse_formula(formulaStr::String)
         throw(ArgumentError("Invalid chemical formula: $formulaStr"))
     end
 
+    @debug "Formula parsed" _group = :parser formula = formulaStr elements =
+        join(elements, ",") counts = join(counts, ",")
     return elements, counts
 end
 
@@ -334,6 +349,8 @@ function _parse_group(s::String, pos::Int)
             for i in eachindex(sub_counts)
                 sub_counts[i] *= multiplier
             end
+            @debug "Parenthesized group expanded" _group = :parser sub_elements =
+                join(sub_elems, ",") multiplier = multiplier
             append!(elements, sub_elems)
             append!(counts, sub_counts)
 
@@ -408,7 +425,10 @@ function load_element_interpolators(element_symbol::String)
     cached = lock(INTERPOLATOR_LOCK) do
         get(INTERPOLATOR_CACHE, element_symbol, nothing)
     end
-    cached !== nothing && return cached
+    if cached !== nothing
+        @debug "Interpolator cache hit" _group = :cache element = element_symbol
+        return cached
+    end
 
     # Reject non-ASCII symbols before constructing file paths
     if !all(isascii, element_symbol)
@@ -418,10 +438,12 @@ function load_element_interpolators(element_symbol::String)
     # Construct filename (lowercase element symbol + .nff extension)
     fname = lowercase(element_symbol) * ".nff"
     file = normpath(joinpath(@__DIR__, "AtomicScatteringFactor", fname))
+    @debug "Resolving .nff file" _group = :io element = element_symbol path = file
 
     # Load data file and build interpolators (outside lock)
     local itp_f1::PCHIPInterp
     local itp_f2::PCHIPInterp
+    t_io = time_ns()
     try
         lines = readlines(file)
         n = length(lines) - 1  # Skip header
@@ -436,6 +458,9 @@ function load_element_interpolators(element_symbol::String)
         end
         itp_f1 = Interpolator(energy, f1_data)
         itp_f2 = Interpolator(energy, f2_data)
+        elapsed_io_ms = (time_ns() - t_io) / 1e6
+        @debug "Loaded .nff file" _group = :io element = element_symbol data_points = n elapsed_ms =
+            round(elapsed_io_ms; digits = 3)
     catch e
         throw(ArgumentError("Element $element_symbol is NOT in the table list: $e"))
     end
@@ -446,6 +471,7 @@ function load_element_interpolators(element_symbol::String)
     lock(INTERPOLATOR_LOCK) do
         INTERPOLATOR_CACHE[element_symbol] = result
     end
+    @debug "Interpolator cache miss → stored" _group = :cache element = element_symbol
 
     return result
 end
@@ -539,6 +565,10 @@ function _calculate_xray_properties_impl(
     energies_keV::Vector{Float64},
     massDensityList::Vector{Float64},
 )
+    t_batch_start = time_ns()
+    @debug "Batch calculation started" _group = :batch formula_count = length(formulaList) energy_count =
+        length(energies_keV) threads = Threads.nthreads()
+
     # ==================================================================================
     # INPUT VALIDATION
     # ==================================================================================
@@ -563,7 +593,11 @@ function _calculate_xray_properties_impl(
 
     energies_keV_sorted = sort(energies_keV)
 
+    t_validate = time_ns()
     _validate_formulas(formulaList)
+    elapsed_validate_ms = (time_ns() - t_validate) / 1e6
+    @debug "Validation + cache warm-up complete" _group = :batch elapsed_ms =
+        round(elapsed_validate_ms; digits = 3)
 
     # ==================================================================================
     # PARALLEL CALCULATION (lock-free: Vector indexed writes, caches are read-only)
@@ -572,6 +606,7 @@ function _calculate_xray_properties_impl(
     n_formulas = length(formulaList)
     results_vec = Vector{XRayResult}(undef, n_formulas)
 
+    t_parallel = time_ns()
     @threads :dynamic for i in 1:n_formulas
         results_vec[i] = _calculate_single_material_impl(
             formulaList[i],
@@ -580,6 +615,13 @@ function _calculate_xray_properties_impl(
             _validated = true,
         )
     end
+    elapsed_parallel_ms = (time_ns() - t_parallel) / 1e6
+    @debug "Parallel computation complete" _group = :batch elapsed_ms =
+        round(elapsed_parallel_ms; digits = 3)
+
+    elapsed_total_ms = (time_ns() - t_batch_start) / 1e6
+    @debug "Batch calculation complete" _group = :batch result_count = n_formulas elapsed_ms =
+        round(elapsed_total_ms; digits = 3)
 
     return Vector{XRayResult}(results_vec)
 end
@@ -599,10 +641,15 @@ function _calculate_single_material_impl(
     # INPUT VALIDATION (skipped when called from batch path which validates upfront)
     # ==================================================================================
 
+    t_start = time_ns()
+
     _validated || _validate_energy_range(energies_keV)
 
     # Sort energies for consistent output (batch path already sorts)
     energies_keV = sort(energies_keV)
+
+    @debug "Single-material calculation started" _group = :computation formula = formulaStr density =
+        massDensity energy_count = length(energies_keV)
 
     # ==================================================================================
     # FORMULA PARSING AND ATOMIC DATA LOOKUP
@@ -627,6 +674,10 @@ function _calculate_single_material_impl(
         molecular_weight += element_counts[i] * atomic_mass
         number_of_electrons += atomic_number * element_counts[i]
     end
+
+    @debug "Molecular properties computed" _group = :computation formula = formulaStr MW =
+        round(molecular_weight; digits = 3) electrons = number_of_electrons element_count =
+        n_elements
 
     # ==================================================================================
     # ENERGY-WAVELENGTH CONVERSION + ARRAY INITIALIZATION (fused to avoid intermediates)
@@ -654,6 +705,8 @@ function _calculate_single_material_impl(
     for i in 1:n_elements
         itp_f1, itp_f2 = load_element_interpolators(element_symbols[i])
         element_data[i] = (element_counts[i], itp_f1, itp_f2)
+        @debug "Element scattering data loaded" _group = :computation element =
+            element_symbols[i] count = element_counts[i]
     end
 
     # ==================================================================================
@@ -702,6 +755,16 @@ function _calculate_single_material_impl(
         re_sld[i] = delta[i] * sld_factor / λ_sq
         im_sld[i] = beta[i] * sld_factor / λ_sq
     end
+
+    @debug "Derived quantities computed" _group = :computation formula = formulaStr electron_density =
+        round(electron_density; sigdigits = 6) critical_angle_range = "($(round(minimum(critical_angle); sigdigits=4)), $(round(maximum(critical_angle); sigdigits=4)))" attenuation_length_range = "($(round(minimum(attenuation_length); sigdigits=4)), $(round(maximum(attenuation_length); sigdigits=4)))"
+
+    @debug "Result summary" _group = :computation formula = formulaStr delta_range = "($(minimum(delta)), $(maximum(delta)))" beta_range = "($(minimum(beta)), $(maximum(beta)))" sld_range = "($(minimum(re_sld)), $(maximum(re_sld)))"
+
+    elapsed_ms = (time_ns() - t_start) / 1e6
+    @debug "Material calculation complete" _group = :computation formula = formulaStr MW =
+        round(molecular_weight; digits = 3) energy_count = n_energies elapsed_ms =
+        round(elapsed_ms; digits = 3)
 
     # ==================================================================================
     # RESULT ASSEMBLY
@@ -816,6 +879,7 @@ function clear_caches!()
     lock(INTERPOLATOR_LOCK) do
         empty!(INTERPOLATOR_CACHE)
     end
+    @debug "Caches cleared" _group = :cache
 end
 
 # =====================================================================================
