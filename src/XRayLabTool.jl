@@ -217,9 +217,10 @@ Uses caching to avoid repeated lookups of the same element.
 - 'ArgumentError': If element symbol is not found in periodic table
 """
 function atomic_number_and_mass(element_symbol::String)
-    # Lock-free read — safe because Dict reads don't corrupt on concurrent read-only access,
-    # and writes are idempotent (same element always produces same result)
-    cached = get(ATOMIC_DATA_CACHE, element_symbol, nothing)
+    # Thread-safe read — Julia's Dict is not safe for concurrent read + write
+    cached = lock(ATOMIC_DATA_LOCK) do
+        get(ATOMIC_DATA_CACHE, element_symbol, nothing)
+    end
     cached !== nothing && return cached
 
     # Search periodic table for element
@@ -403,8 +404,10 @@ Returns cached interpolator pair if available, otherwise loads the element's
 - `ArgumentError`: If element data file cannot be found
 """
 function load_element_interpolators(element_symbol::String)
-    # Lock-free read — safe for concurrent readers; writes are idempotent
-    cached = get(INTERPOLATOR_CACHE, element_symbol, nothing)
+    # Thread-safe read — Julia's Dict is not safe for concurrent read + write
+    cached = lock(INTERPOLATOR_LOCK) do
+        get(INTERPOLATOR_CACHE, element_symbol, nothing)
+    end
     cached !== nothing && return cached
 
     # Construct filename (lowercase element symbol + .nff extension)

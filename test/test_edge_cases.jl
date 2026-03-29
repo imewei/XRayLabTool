@@ -264,6 +264,23 @@ end
     @test haskey(XRayLabTool.ATOMIC_DATA_CACHE, "Si")
 end
 
+@testset "Thread-safe cache access" begin
+    XRayLabTool.clear_caches!()
+
+    # Concurrent calls for different elements should not crash
+    elements = ["Si", "O", "Al", "Fe", "Au", "Ca", "Na", "Mg", "H", "C"]
+    results = Vector{Any}(nothing, length(elements))
+
+    Threads.@threads for i in eachindex(elements)
+        results[i] = calculate_single_material_properties(elements[i], [8.0], 1.0)
+    end
+
+    for (i, elem) in enumerate(elements)
+        @test results[i] isa XRayResult
+        @test results[i].formula == elem
+    end
+end
+
 # =======================================================================================
 # 8. XRayResult FIELD COMPLETENESS & PROPERTYNAMES
 # =======================================================================================
