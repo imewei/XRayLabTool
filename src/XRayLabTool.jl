@@ -522,7 +522,7 @@ end
 # =====================================================================================
 
 """
-    _calculate_xray_properties_impl(formulaList, energies_keV, massDensityList) -> Dict{String, XRayResult}
+    _calculate_xray_properties_impl(formulaList, energies_keV, massDensityList) -> Vector{XRayResult}
 
 Internal implementation for batch X-ray property calculation.
 """
@@ -573,14 +573,7 @@ function _calculate_xray_properties_impl(
         )
     end
 
-    # Collect into Dict (single-threaded, no lock needed)
-    results = Dict{String, XRayResult}()
-    sizehint!(results, n_formulas)
-    for i in 1:n_formulas
-        results[formulaList[i]] = results_vec[i]
-    end
-
-    return results
+    return Vector{XRayResult}(results_vec)
 end
 
 """
@@ -727,7 +720,7 @@ end
 # =====================================================================================
 
 """
-    calculate_xray_properties(formulaList, energy, massDensityList) -> Dict{String, XRayResult}
+    calculate_xray_properties(formulaList, energy, massDensityList) -> Vector{XRayResult}
 
 Calculate X-ray optical properties for multiple chemical formulas (vector interface).
 
@@ -737,7 +730,7 @@ Calculate X-ray optical properties for multiple chemical formulas (vector interf
 - `massDensityList::Vector{Float64}`: Mass densities in g/cm³
 
 # Returns
-- `Dict{String, XRayResult}`: Dictionary mapping formula strings to results
+- `Vector{XRayResult}`: Results in same order as input formulas
 
 # Examples
 ```julia
@@ -746,7 +739,7 @@ energies = [8.0, 10.0, 12.0, 15.0]
 densities = [2.2, 3.95, 5.24]
 
 results = calculate_xray_properties(formulas, energies, densities)
-sio2_result = results["SiO2"]
+sio2_result = results[1]
 println("SiO2 molecular weight: ", sio2_result.molecular_weight)
 ```
 """
@@ -879,7 +872,7 @@ end
 # =====================================================================================
 
 """
-    Refrac(formulaList, energy, massDensityList) -> Dict{String, XRayResult}
+    Refrac(formulaList, energy, massDensityList) -> Vector{XRayResult}
 
 !!! warning "Deprecated"
     Use [`calculate_xray_properties`](@ref) instead.

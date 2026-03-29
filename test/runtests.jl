@@ -41,17 +41,16 @@ end
         data = calculate_xray_properties(MATERIALS, ENERGIES, DENSITIES)
 
         # Test that materials are properly initialized
-        @test haskey(data, "SiO2")
-        @test haskey(data, "H2O")
+        @test data[1].formula == "SiO2"
+        @test data[2].formula == "H2O"
 
         # Test data structure integrity
         @test length(data) == 2
-        @test all(material in keys(data) for material in MATERIALS)
     end
 
     @testset "SiO2 Properties - New API" begin
         data = calculate_xray_properties(MATERIALS, ENERGIES, DENSITIES)
-        sio2 = data["SiO2"]
+        sio2 = data[1]
 
         # Expected values for SiO2
         expected_dispersion = [(3, 9.451484792575434e-6), (5, 5.69919201789506e-06)]
@@ -93,7 +92,7 @@ end
 
     @testset "H2O Properties - New API" begin
         data = calculate_xray_properties(MATERIALS, ENERGIES, DENSITIES)
-        h2o = data["H2O"]
+        h2o = data[2]
 
         # Expected values for H2O
         expected_dispersion = [(3, 4.734311949237782e-6), (5, 2.8574954896752405e-6)]
@@ -160,17 +159,17 @@ end
         # Test with mismatched array lengths
         @test_throws Exception calculate_xray_properties(MATERIALS, ENERGIES, [1.0])  # Wrong density count
 
-        # Test accessing non-existent material
+        # Test that results have correct length
         data = calculate_xray_properties(MATERIALS, ENERGIES, DENSITIES)
-        @test !haskey(data, "NonExistentMaterial")
+        @test length(data) == 2
     end
 
     @testset "Property Consistency - New API" begin
         data = calculate_xray_properties(MATERIALS, ENERGIES, DENSITIES)
 
         # Test that all materials have the same energy array length
-        for material in MATERIALS
-            material_data = data[material]
+        for (i, material) in enumerate(MATERIALS)
+            material_data = data[i]
             @test length(material_data.f1) == length(ENERGIES)
             @test length(material_data.dispersion) == length(ENERGIES)
             @test length(material_data.real_sld) == length(ENERGIES)
@@ -258,12 +257,12 @@ end
 
                 results = calculate_xray_properties(formulas, energies, densities)
 
-                # Both SiO2 entries should be present and identical
-                @test haskey(results, "SiO2")
-                @test haskey(results, "Al2O3")
+                # All entries should be present in order
+                @test results[1].formula == "SiO2"
+                @test results[3].formula == "Al2O3"
 
                 # Results should be consistent for the same material
-                sio2_result = results["SiO2"]
+                sio2_result = results[1]
                 @test sio2_result.formula == "SiO2"
                 @test sio2_result.mass_density == 2.2
                 @test length(sio2_result.energy) == length(energies)
@@ -275,10 +274,10 @@ end
             @testset "Boundary energy values" begin
                 # Test exactly at boundaries (should work)
                 result_min = calculate_xray_properties(["SiO2"], [0.03], [2.2])
-                @test haskey(result_min, "SiO2")
+                @test result_min[1].formula == "SiO2"
 
                 result_max = calculate_xray_properties(["SiO2"], [30.0], [2.2])
-                @test haskey(result_max, "SiO2")
+                @test result_max[1].formula == "SiO2"
             end
 
             # Test with very small density
@@ -314,9 +313,8 @@ end
             data_legacy = @test_deprecated Refrac(MATERIALS, ENERGIES, DENSITIES)
 
             # Results should be identical
-            @test haskey(data_new, "SiO2") && haskey(data_legacy, "SiO2")
-            @test data_new["SiO2"].dispersion ≈ data_legacy["SiO2"].dispersion
-            @test data_new["SiO2"].f1 ≈ data_legacy["SiO2"].f1
+            @test data_new[1].dispersion ≈ data_legacy[1].dispersion
+            @test data_new[1].f1 ≈ data_legacy[1].f1
 
             # Test single material functions
             si_new = calculate_single_material_properties("Si", [20.0], 2.33)
@@ -329,7 +327,7 @@ end
         @testset "Legacy Field Names Still Work" begin
             # Test that old field names still work via property accessor
             data = calculate_xray_properties(["SiO2"], [8.0, 10.0], [2.2])
-            sio2 = data["SiO2"]
+            sio2 = data[1]
 
             # Test deprecated field names work
             @test_nowarn sio2.Formula
@@ -365,7 +363,7 @@ end
         @testset "Legacy Tests Using Old Field Names" begin
             # Run some original tests using old field names to ensure backward compatibility
             data = @test_deprecated Refrac(MATERIALS, ENERGIES, DENSITIES)
-            sio2 = data["SiO2"]
+            sio2 = data[1]
 
             # Expected values for SiO2 (same as before)
             expected_dispersion = [(3, 9.451484792575434e-6), (5, 5.69919201789506e-06)]

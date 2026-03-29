@@ -478,8 +478,8 @@ end
         formulas = ["SiO2", "Al2O3", "Fe2O3"]
         densities = [2.2, 3.95, 5.24]
         results = calculate_xray_properties(formulas, [8.0, 10.0], densities)
-        for f in formulas
-            @test haskey(results, f)
+        for (i, f) in enumerate(formulas)
+            @test results[i].formula == f
         end
     end
 
@@ -490,24 +490,25 @@ end
 
         batch = calculate_xray_properties(formulas, energies, densities)
 
-        for (f, d) in zip(formulas, densities)
+        for (i, (f, d)) in enumerate(zip(formulas, densities))
             individual = calculate_single_material_properties(f, sort(energies), d)
-            @test batch[f].dispersion ≈ individual.dispersion rtol=1e-12
-            @test batch[f].f1 ≈ individual.f1 rtol=1e-12
-            @test batch[f].f2 ≈ individual.f2 rtol=1e-12
-            @test batch[f].real_sld ≈ individual.real_sld rtol=1e-12
+            @test batch[i].dispersion ≈ individual.dispersion rtol=1e-12
+            @test batch[i].f1 ≈ individual.f1 rtol=1e-12
+            @test batch[i].f2 ≈ individual.f2 rtol=1e-12
+            @test batch[i].real_sld ≈ individual.real_sld rtol=1e-12
         end
     end
 
     @testset "Batch sorts energies" begin
         results = calculate_xray_properties(["Si"], [10.0, 5.0, 8.0], [2.33])
-        @test issorted(results["Si"].energy)
+        @test issorted(results[1].energy)
     end
 
     @testset "Duplicate formulas in batch" begin
-        results = calculate_xray_properties(["SiO2", "SiO2"], [8.0], [2.2, 2.2])
-        @test haskey(results, "SiO2")
-        @test results["SiO2"].mass_density == 2.2
+        results = calculate_xray_properties(["SiO2", "SiO2"], [8.0], [2.2, 3.0])
+        @test length(results) == 2
+        @test results[1].mass_density == 2.2
+        @test results[2].mass_density == 3.0
     end
 end
 
