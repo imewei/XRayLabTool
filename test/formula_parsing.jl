@@ -78,6 +78,47 @@ using XRayLabTool
         @test counts ≈ [0.123, 0.876] atol=1e-10
     end
 
+    @testset "Parenthesized formulas" begin
+        # Simple group
+        symbols, counts = XRayLabTool.parse_formula("Ca(OH)2")
+        @test symbols == ["Ca", "O", "H"]
+        @test counts == [1.0, 2.0, 2.0]
+
+        # Nested groups
+        symbols, counts = XRayLabTool.parse_formula("Ca3(PO4)2")
+        @test symbols == ["Ca", "P", "O"]
+        @test counts == [3.0, 2.0, 8.0]
+
+        # Multiple groups
+        symbols, counts = XRayLabTool.parse_formula("Mg(OH)2Ca(NO3)2")
+        @test symbols == ["Mg", "O", "H", "Ca", "N", "O"]
+        @test counts == [1.0, 2.0, 2.0, 1.0, 2.0, 6.0]
+
+        # Group with no trailing number (multiplier = 1)
+        symbols, counts = XRayLabTool.parse_formula("(NH4)Cl")
+        @test symbols == ["N", "H", "Cl"]
+        @test counts == [1.0, 4.0, 1.0]
+
+        # Deeply nested: ((OH)2)3 = O6H6
+        symbols, counts = XRayLabTool.parse_formula("Fe((OH)2)3")
+        @test symbols == ["Fe", "O", "H"]
+        @test counts == [1.0, 6.0, 6.0]
+
+        # Fractional inside group
+        symbols, counts = XRayLabTool.parse_formula("(H0.5He0.5)2")
+        @test symbols == ["H", "He"]
+        @test counts == [1.0, 1.0]
+    end
+
+    @testset "Parenthesized formula errors" begin
+        # Unbalanced opening paren
+        @test_throws ArgumentError XRayLabTool.parse_formula("Ca(OH")
+        # Unbalanced closing paren
+        @test_throws ArgumentError XRayLabTool.parse_formula("CaOH)")
+        # Empty parens
+        @test_throws ArgumentError XRayLabTool.parse_formula("Ca()2")
+    end
+
     @testset "Invalid inputs" begin
         @test_throws ArgumentError XRayLabTool.parse_formula("")
         @test_throws ArgumentError XRayLabTool.parse_formula("123")

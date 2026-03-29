@@ -225,7 +225,7 @@ end
 Parse a chemical formula string into element symbols and their counts.
 
 # Arguments
-- 'formulaStr::String': Chemical formula (e.g., "SiO2", "Al2O3", "CaCO3")
+- 'formulaStr::String': Chemical formula (e.g., "SiO2", "Al2O3", "Ca(OH)2", "Ca3(PO4)2")
 
 # Returns
 - 'Tuple{Vector{String}, Vector{Float64}}': (element_symbols, element_counts)
@@ -237,37 +237,128 @@ symbols, counts = parse_formula("SiO2")
 
 symbols, counts = parse_formula("Al2O3")
 # symbols = ["Al", "O"], counts = [2.0, 3.0]
+
+symbols, counts = parse_formula("Ca(OH)2")
+# symbols = ["Ca", "O", "H"], counts = [1.0, 2.0, 2.0]
+
+symbols, counts = parse_formula("Ca3(PO4)2")
+# symbols = ["Ca", "P", "O"], counts = [3.0, 2.0, 8.0]
 '''
 
 # Throws
 - 'ArgumentError': If formula string is invalid or empty
 """
 function parse_formula(formulaStr::String)
-    # Regular expression to match element symbols and their counts
-    # Matches: Capital letter + optional lowercase + optional number (int or float)
-    elements_match = eachmatch(r"([A-Z][a-z]*)(\d*\.\d*|\d*)", formulaStr)
-
-    if isempty(elements_match)
-        throw(ArgumentError("Invalid chemical formula: $formulaStr"))
+    if isempty(formulaStr)
+        throw(ArgumentError("Invalid chemical formula: empty string"))
     end
 
-    element_symbols = String[]
-    element_counts = Float64[]
+    elements, counts, pos = _parse_group(formulaStr, 1)
 
-    for elem_match in elements_match
-        # Null guard eliminates Union{Nothing, SubString} — compiler proves concrete type
-        sym = elem_match[1]
-        sym === nothing && continue
-        push!(element_symbols, String(sym))
-
-        count_str = elem_match[2]
-        push!(
-            element_counts,
-            (count_str === nothing || count_str == "") ? 1.0 : parse(Float64, count_str),
+    if pos <= lastindex(formulaStr)
+        throw(
+            ArgumentError(
+                "Invalid chemical formula: unexpected character '$(formulaStr[pos])' at position $pos in \"$formulaStr\"",
+            ),
         )
     end
 
-    return element_symbols, element_counts
+    if isempty(elements)
+        throw(ArgumentError("Invalid chemical formula: $formulaStr"))
+    end
+
+    return elements, counts
+end
+
+"""
+    _parse_group(s, pos) -> (Vector{String}, Vector{Float64}, Int)
+
+Recursive descent parser for chemical formula groups. Handles nested parentheses.
+Returns (element_symbols, element_counts, next_position).
+"""
+function _parse_group(s::String, pos::Int)
+    elements = String[]
+    counts = Float64[]
+
+    while pos <= lastindex(s)
+        c = s[pos]
+
+        if c == '('
+            # Recurse into sub-group
+            sub_elems, sub_counts, pos = _parse_group(s, pos + 1)
+
+            if pos > lastindex(s) || s[pos] != ')'
+                throw(
+                    ArgumentError(
+                        "Invalid chemical formula: unbalanced parenthesis in \"$s\"",
+                    ),
+                )
+            end
+            pos += 1  # skip ')'
+
+            if isempty(sub_elems)
+                throw(
+                    ArgumentError("Invalid chemical formula: empty parentheses in \"$s\""),
+                )
+            end
+
+            # Read optional multiplier after ')'
+            multiplier, pos = _parse_number(s, pos)
+
+            # Apply multiplier to all elements in the sub-group
+            for i in eachindex(sub_counts)
+                sub_counts[i] *= multiplier
+            end
+            append!(elements, sub_elems)
+            append!(counts, sub_counts)
+
+        elseif c == ')'
+            # End of current group — return to caller
+            return elements, counts, pos
+
+        elseif isuppercase(c)
+            # Parse element symbol: uppercase + optional lowercase
+            sym_start = pos
+            pos += 1
+            while pos <= lastindex(s) && islowercase(s[pos])
+                pos += 1
+            end
+            symbol = s[sym_start:prevind(s, pos)]
+
+            # Parse optional count after element
+            count, pos = _parse_number(s, pos)
+
+            push!(elements, symbol)
+            push!(counts, count)
+
+        else
+            # Unexpected character (digits without element, special chars, etc.)
+            throw(
+                ArgumentError(
+                    "Invalid chemical formula: unexpected character '$(c)' at position $pos in \"$s\"",
+                ),
+            )
+        end
+    end
+
+    return elements, counts, pos
+end
+
+"""
+    _parse_number(s, pos) -> (Float64, Int)
+
+Parse an optional number (integer or decimal) at position `pos`.
+Returns 1.0 if no number is found.
+"""
+function _parse_number(s::String, pos::Int)
+    start = pos
+    while pos <= lastindex(s) && (isdigit(s[pos]) || s[pos] == '.')
+        pos += 1
+    end
+    if pos == start
+        return 1.0, pos
+    end
+    return parse(Float64, s[start:prevind(s, pos)]), pos
 end
 
 """
