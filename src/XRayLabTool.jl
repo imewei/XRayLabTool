@@ -170,11 +170,22 @@ const INTERPOLATOR_LOCK = ReentrantLock()
 
 """Non-allocating energy range validation (avoids temporary BitVector from broadcasting)."""
 @inline function _validate_energy_range(energies_keV::Vector{Float64})
-    if any(e -> e < 0.03 || e > 30.0, energies_keV)
-        throw(ArgumentError("Energy is out of range 0.03KeV ~ 30KeV"))
+    if isempty(energies_keV)
+        throw(ArgumentError("Energy vector must not be empty"))
+    end
+    if any(e -> !isfinite(e) || e < 0.03 || e > 30.0, energies_keV)
+        throw(ArgumentError("Energy is out of range 0.03KeV ~ 30KeV (NaN/Inf not allowed)"))
     end
     @debug "Energy range validated" _group = :validation count = length(energies_keV) min_keV =
         minimum(energies_keV) max_keV = maximum(energies_keV)
+end
+
+"""Validate that mass density is a positive finite number."""
+@inline function _validate_density(density::Float64, label::String = "")
+    if !isfinite(density) || density <= 0
+        ctx = isempty(label) ? "" : " for $label"
+        throw(ArgumentError("Mass density must be positive and finite$ctx (got $density)"))
+    end
 end
 
 """Validate all formulas upfront. Throws ArgumentError listing all invalid formulas."""
@@ -593,6 +604,11 @@ function _calculate_xray_properties_impl(
         throw(ArgumentError("Formula list and mass density list must have the same length"))
     end
 
+    # Validate all densities
+    for (i, d) in enumerate(massDensityList)
+        _validate_density(d, formulaList[i])
+    end
+
     # ==================================================================================
     # STRICT VALIDATION (single-threaded — validates ALL formulas before any computation,
     # reports all errors at once, and warms caches as a side effect)
@@ -648,9 +664,12 @@ function _calculate_single_material_impl(
     # INPUT VALIDATION (skipped when called from batch path which validates upfront)
     # ==================================================================================
 
-    t_start = time_ns()
+    if !_validated
+        _validate_energy_range(energies_keV)
+        _validate_density(massDensity, formulaStr)
+    end
 
-    _validated || _validate_energy_range(energies_keV)
+    t_start = time_ns()
 
     # Sort energies for consistent output (batch path already sorts)
     energies_keV = sort(energies_keV)

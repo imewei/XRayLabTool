@@ -377,6 +377,59 @@ end
 end
 
 # =======================================================================================
+# 9b. INPUT VALIDATION — NaN, Inf, NEGATIVE, EMPTY
+# =======================================================================================
+
+@testset "Input validation edge cases" begin
+    @testset "NaN energy rejected" begin
+        @test_throws ArgumentError calculate_single_material_properties("Si", [NaN], 2.33)
+        @test_throws ArgumentError calculate_single_material_properties(
+            "Si",
+            [8.0, NaN],
+            2.33,
+        )
+    end
+
+    @testset "Inf energy rejected" begin
+        @test_throws ArgumentError calculate_single_material_properties("Si", [Inf], 2.33)
+        @test_throws ArgumentError calculate_single_material_properties("Si", [-Inf], 2.33)
+    end
+
+    @testset "Empty energy rejected in single-material path" begin
+        @test_throws ArgumentError calculate_single_material_properties(
+            "Si",
+            Float64[],
+            2.33,
+        )
+    end
+
+    @testset "Zero density rejected" begin
+        @test_throws ArgumentError calculate_single_material_properties("Si", [8.0], 0.0)
+    end
+
+    @testset "Negative density rejected" begin
+        @test_throws ArgumentError calculate_single_material_properties("Si", [8.0], -1.0)
+    end
+
+    @testset "NaN density rejected" begin
+        @test_throws ArgumentError calculate_single_material_properties("Si", [8.0], NaN)
+    end
+
+    @testset "Inf density rejected" begin
+        @test_throws ArgumentError calculate_single_material_properties("Si", [8.0], Inf)
+    end
+
+    @testset "Batch density validation" begin
+        @test_throws ArgumentError calculate_xray_properties(
+            ["Si", "Au"],
+            [8.0],
+            [2.33, -19.3],
+        )
+        @test_throws ArgumentError calculate_xray_properties(["Si"], [8.0], [NaN])
+    end
+end
+
+# =======================================================================================
 # 10. FLUORINE-CONTAINING COMPOUNDS (previously broken)
 # =======================================================================================
 
