@@ -451,6 +451,21 @@ end
     end
 end
 
+@testset "Negative delta handling" begin
+    @testset "Critical angle is zero when delta is negative" begin
+        # At very low energies near absorption edges, f1 can go negative.
+        # We test that the function doesn't throw DomainError.
+        energies = collect(0.03:0.01:0.1)
+        result = calculate_single_material_properties("Si", energies, 2.33)
+
+        # Critical angle should be non-negative (zero when delta < 0)
+        @test all(result.critical_angle .>= 0.0)
+
+        # All values should be finite (no NaN from sqrt of negative)
+        @test all(isfinite, result.critical_angle)
+    end
+end
+
 # =======================================================================================
 # 12. PROPERTY-BASED TESTS — FORMULA PARSING
 # =======================================================================================

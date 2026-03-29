@@ -689,7 +689,7 @@ function _calculate_single_material_impl(
         λ_sq = λ * λ
 
         wavelength_angstrom[i] = λ * 1e10
-        critical_angle[i] = sqrt(2.0 * delta[i]) * rad_to_deg
+        critical_angle[i] = delta[i] > 0 ? sqrt(2.0 * delta[i]) * rad_to_deg : 0.0
         attenuation_length[i] = λ * inv_4pi / beta[i] * 1e2
         re_sld[i] = delta[i] * sld_factor / λ_sq
         im_sld[i] = beta[i] * sld_factor / λ_sq
