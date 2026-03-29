@@ -143,6 +143,14 @@ const AVOGADRO = 6.02214076e23        # Avogadro's number (mol⁻¹) — exact s
 const HC_OVER_ELECTRON_CHARGE_keV = (SPEED_OF_LIGHT * PLANCK / ELEMENT_CHARGE) / 1000.0
 const SCATTERING_PREFACTOR = THOMSON_SCATTERING_LENGTH * AVOGADRO * 1e6 / (2 * π)
 
+# Unit conversion factors
+const KEV_TO_EV = 1000.0
+const M_TO_ANGSTROM = 1e10
+const M_TO_CM = 1e2
+const NS_TO_MS = 1e6
+const ELECTRON_DENSITY_FACTOR = AVOGADRO * 1e6 / 1e30  # mol⁻¹·cm³→Å³
+const SLD_FACTOR = 2 * π / 1e20                          # Å⁻² conversion
+
 # Deprecation bridges for backward compatibility
 const THOMPSON = THOMSON_SCATTERING_LENGTH  # Deprecated: use THOMSON_SCATTERING_LENGTH
 const ENERGY_TO_WAVELENGTH_FACTOR = HC_OVER_ELECTRON_CHARGE_keV  # Deprecated: use HC_OVER_ELECTRON_CHARGE_keV
@@ -474,7 +482,7 @@ function load_element_interpolators(element_symbol::String)
         end
         itp_f1 = Interpolator(energy, f1_data)
         itp_f2 = Interpolator(energy, f2_data)
-        elapsed_io_ms = (time_ns() - t_io) / 1e6
+        elapsed_io_ms = (time_ns() - t_io) / NS_TO_MS
         @debug "Loaded .nff file" _group = :io element = element_symbol data_points = n elapsed_ms =
             round(elapsed_io_ms; digits = 3)
     catch e
@@ -568,6 +576,45 @@ function accumulate_optical_coefficients!(
 end
 
 # =====================================================================================
+# DERIVED QUANTITIES
+# =====================================================================================
+
+"""
+    _compute_derived_quantities(wavelengths_m, delta, beta)
+
+Compute wavelength (Å), critical angle (deg), attenuation length (cm),
+and SLD (Å⁻²) from optical coefficients delta and beta.
+"""
+function _compute_derived_quantities(
+    wavelengths_m::Vector{Float64},
+    delta::Vector{Float64},
+    beta::Vector{Float64},
+)
+    n = length(wavelengths_m)
+    wavelength_angstrom = Vector{Float64}(undef, n)
+    critical_angle = Vector{Float64}(undef, n)
+    attenuation_length = Vector{Float64}(undef, n)
+    re_sld = Vector{Float64}(undef, n)
+    im_sld = Vector{Float64}(undef, n)
+
+    inv_4pi = 1.0 / (4 * π)
+    rad_to_deg = 180.0 / π
+
+    @inbounds for i in 1:n
+        λ = wavelengths_m[i]
+        λ_sq = λ * λ
+
+        wavelength_angstrom[i] = λ * M_TO_ANGSTROM
+        critical_angle[i] = delta[i] > 0 ? sqrt(2.0 * delta[i]) * rad_to_deg : 0.0
+        attenuation_length[i] = λ * inv_4pi / beta[i] * M_TO_CM
+        re_sld[i] = delta[i] * SLD_FACTOR / λ_sq
+        im_sld[i] = beta[i] * SLD_FACTOR / λ_sq
+    end
+
+    return wavelength_angstrom, critical_angle, attenuation_length, re_sld, im_sld
+end
+
+# =====================================================================================
 # MAIN CALCULATION FUNCTIONS
 # =====================================================================================
 
@@ -618,7 +665,7 @@ function _calculate_xray_properties_impl(
 
     t_validate = time_ns()
     _validate_formulas(formulaList)
-    elapsed_validate_ms = (time_ns() - t_validate) / 1e6
+    elapsed_validate_ms = (time_ns() - t_validate) / NS_TO_MS
     @debug "Validation + cache warm-up complete" _group = :batch elapsed_ms =
         round(elapsed_validate_ms; digits = 3)
 
@@ -638,11 +685,11 @@ function _calculate_xray_properties_impl(
             _validated = true,
         )
     end
-    elapsed_parallel_ms = (time_ns() - t_parallel) / 1e6
+    elapsed_parallel_ms = (time_ns() - t_parallel) / NS_TO_MS
     @debug "Parallel computation complete" _group = :batch elapsed_ms =
         round(elapsed_parallel_ms; digits = 3)
 
-    elapsed_total_ms = (time_ns() - t_batch_start) / 1e6
+    elapsed_total_ms = (time_ns() - t_batch_start) / NS_TO_MS
     @debug "Batch calculation complete" _group = :batch result_count = n_formulas elapsed_ms =
         round(elapsed_total_ms; digits = 3)
 
@@ -713,7 +760,7 @@ function _calculate_single_material_impl(
     energies_eV = Vector{Float64}(undef, n_energies)
     @inbounds for i in 1:n_energies
         wavelengths_m[i] = HC_OVER_ELECTRON_CHARGE_keV / energies_keV[i]
-        energies_eV[i] = energies_keV[i] * 1000.0
+        energies_eV[i] = energies_keV[i] * KEV_TO_EV
     end
 
     # Pre-allocate output arrays with zeros
@@ -754,40 +801,21 @@ function _calculate_single_material_impl(
     )
 
     # ==================================================================================
-    # DERIVED QUANTITY CALCULATIONS (fused into single loop to avoid intermediates)
+    # DERIVED QUANTITY CALCULATIONS
     # ==================================================================================
 
     electron_density =
-        1e6 * massDensity / molecular_weight * AVOGADRO * number_of_electrons / 1e30
+        massDensity / molecular_weight * ELECTRON_DENSITY_FACTOR * number_of_electrons
 
-    # Pre-allocate all output arrays
-    wavelength_angstrom = Vector{Float64}(undef, n_energies)
-    critical_angle = Vector{Float64}(undef, n_energies)
-    attenuation_length = Vector{Float64}(undef, n_energies)
-    re_sld = Vector{Float64}(undef, n_energies)
-    im_sld = Vector{Float64}(undef, n_energies)
-
-    inv_4pi = 1.0 / (4 * π)
-    sld_factor = 2 * π / 1e20
-    rad_to_deg = 180.0 / π
-
-    @inbounds for i in 1:n_energies
-        λ = wavelengths_m[i]
-        λ_sq = λ * λ
-
-        wavelength_angstrom[i] = λ * 1e10
-        critical_angle[i] = delta[i] > 0 ? sqrt(2.0 * delta[i]) * rad_to_deg : 0.0
-        attenuation_length[i] = λ * inv_4pi / beta[i] * 1e2
-        re_sld[i] = delta[i] * sld_factor / λ_sq
-        im_sld[i] = beta[i] * sld_factor / λ_sq
-    end
+    wavelength_angstrom, critical_angle, attenuation_length, re_sld, im_sld =
+        _compute_derived_quantities(wavelengths_m, delta, beta)
 
     @debug "Derived quantities computed" _group = :computation formula = formulaStr electron_density =
         round(electron_density; sigdigits = 6) critical_angle_range = "($(round(minimum(critical_angle); sigdigits=4)), $(round(maximum(critical_angle); sigdigits=4)))" attenuation_length_range = "($(round(minimum(attenuation_length); sigdigits=4)), $(round(maximum(attenuation_length); sigdigits=4)))"
 
     @debug "Result summary" _group = :computation formula = formulaStr delta_range = "($(minimum(delta)), $(maximum(delta)))" beta_range = "($(minimum(beta)), $(maximum(beta)))" sld_range = "($(minimum(re_sld)), $(maximum(re_sld)))"
 
-    elapsed_ms = (time_ns() - t_start) / 1e6
+    elapsed_ms = (time_ns() - t_start) / NS_TO_MS
     @debug "Material calculation complete" _group = :computation formula = formulaStr MW =
         round(molecular_weight; digits = 3) energy_count = n_energies elapsed_ms =
         round(elapsed_ms; digits = 3)
@@ -915,58 +943,8 @@ end
 # Deprecated aliases for backward compatibility
 # These will issue deprecation warnings when used
 
-"""
-    get_atomic_data(element_symbol::String) -> (Int, Float64)
-
-**DEPRECATED**: Use `atomic_number_and_mass` instead.
-"""
-function get_atomic_data(element_symbol::String)
-    @warn "get_atomic_data is deprecated, use atomic_number_and_mass instead" maxlog=1
-    return atomic_number_and_mass(element_symbol)
-end
-
-"""
-    load_f1f2_table(element_symbol::String) -> (PCHIPInterp, PCHIPInterp)
-
-**DEPRECATED**: Use `load_element_interpolators` instead.
-"""
-function load_f1f2_table(element_symbol::String)
-    @warn "load_f1f2_table is deprecated, use load_element_interpolators instead" maxlog=1
-    return load_element_interpolators(element_symbol)
-end
-
-# Removed: load_scattering_factor_table (was internal, returned DataFrame)
-# Removed: create_interpolators, pchip_interpolators (interpolators are now cached directly)
-
-"""
-    calculate_scattering_factors!(...)
-
-**DEPRECATED**: Use `accumulate_optical_coefficients!` instead.
-"""
-function calculate_scattering_factors!(
-    energy_ev::Vector{Float64},
-    wavelength::Vector{Float64},
-    mass_density::Float64,
-    molecular_weight::Float64,
-    element_data::Vector{ElementInterpolatorData},
-    dispersion::Vector{Float64},
-    absorption::Vector{Float64},
-    f1_total::Vector{Float64},
-    f2_total::Vector{Float64},
-)
-    @warn "calculate_scattering_factors! is deprecated, use accumulate_optical_coefficients! instead" maxlog=1
-    return accumulate_optical_coefficients!(
-        energy_ev,
-        wavelength,
-        mass_density,
-        molecular_weight,
-        element_data,
-        dispersion,
-        absorption,
-        f1_total,
-        f2_total,
-    )
-end
+# Removed in v0.7: get_atomic_data, load_f1f2_table, calculate_scattering_factors!
+# Removed in v0.6: load_scattering_factor_table, create_interpolators, pchip_interpolators
 
 # =====================================================================================
 # DEPRECATED PUBLIC API
