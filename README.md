@@ -109,7 +109,7 @@ julia -e 'using JuliaFormatter; format("src")'
 
 ## Documentation
 
-Full documentation including physics background, API reference, and migration guide is available at the [documentation site](https://imewei.github.io/XRayLabTool.jl/).
+Full documentation including physics background, API reference, and migration guide is available at the [documentation site](https://imewei.github.io/XRayLabTool/).
 
 ## References
 

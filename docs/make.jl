@@ -6,7 +6,7 @@ makedocs(
     modules = [XRayLabTool],
     format = Documenter.HTML(
         prettyurls = get(ENV, "CI", nothing) == "true",
-        canonical = "https://imewei.github.io/XRayLabTool.jl",
+        canonical = "https://imewei.github.io/XRayLabTool",
         assets = String[],
     ),
     pages = [
@@ -21,4 +21,4 @@ makedocs(
     warnonly = true,
 )
 
-deploydocs(repo = "github.com/imewei/XRayLabTool.jl.git", devbranch = "main")
+deploydocs(repo = "github.com/imewei/XRayLabTool.git", devbranch = "main")
