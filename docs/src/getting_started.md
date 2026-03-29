@@ -49,9 +49,9 @@ densities = [2.2, 3.95, 5.24, 19.3]
 
 results = calculate_xray_properties(formulas, energies, densities)
 
-# Access by formula name
-sio2 = results["SiO2"]
-au   = results["Au"]
+# Access by index (same order as input formulas)
+sio2 = results[1]   # SiO2
+au   = results[4]   # Au
 
 println("Au critical angle at 8 keV: ", au.critical_angle[71])
 ```
@@ -74,6 +74,9 @@ The parser supports:
 | `"SiO2"` | 1 Si + 2 O |
 | `"Al2O3"` | 2 Al + 3 O |
 | `"CaCO3"` | 1 Ca + 1 C + 3 O |
+| `"Ca(OH)2"` | Parenthesized groups: 1 Ca + 2 O + 2 H |
+| `"Ca3(PO4)2"` | Nested groups: 3 Ca + 2 P + 8 O |
+| `"Fe((OH)2)3"` | Deeply nested: 1 Fe + 6 O + 6 H |
 | `"H0.5He0.5"` | Fractional stoichiometry |
 | `"C100H200"` | Large subscripts |
 

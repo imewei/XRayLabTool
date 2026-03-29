@@ -13,10 +13,11 @@ based on their chemical composition and density.
 # Single formula (new API)
 result = calculate_single_material_properties("SiO2", [8.0, 10.0, 12.0], 2.2)
 
-# Multiple formulas (new API)
+# Multiple formulas (new API) — returns Vector{XRayResult}
 results = calculate_xray_properties(["SiO2", "Al2O3"], [8.0, 10.0, 12.0], [2.2, 3.95])
+sio2 = results[1]  # access by index (same order as input)
 
-# Access properties using new field names
+# Access properties
 println("Molecular weight: ", result.molecular_weight)
 println("Critical angle: ", result.critical_angle[1])
 ```

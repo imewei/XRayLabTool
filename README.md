@@ -1,8 +1,5 @@
 # XRayLabTool.jl
 
-[![CI](https://github.com/imewei/XRayLabTool.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/imewei/XRayLabTool.jl/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/imewei/XRayLabTool.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/imewei/XRayLabTool.jl)
-
 **Material property calculations for X-ray interactions**
 
 XRayLabTool is a Julia package that calculates X-ray optical properties of materials from their chemical composition and density. It is designed for synchrotron scientists, materials researchers, and X-ray optics developers.
@@ -13,6 +10,8 @@ XRayLabTool is a Julia package that calculates X-ray optical properties of mater
 - Single and batch multi-material calculations with multi-threaded execution
 - Based on CXRO/Henke atomic scattering factor tables (H through U, 30 eV -- 30 keV)
 - PCHIP interpolation for smooth, monotonicity-preserving evaluation at arbitrary energies
+- Parenthesized chemical formula support: `Ca(OH)2`, `Ca3(PO4)2`, `Fe((OH)2)3`
+- Debug logging with topic categories (enable with `ENV["JULIA_DEBUG"] = "XRayLabTool"`)
 - Lightweight: only 3 runtime dependencies (PCHIPInterpolation, Mendeleev, Unitful)
 
 ## Requirements
@@ -52,8 +51,8 @@ results = calculate_xray_properties(
     [2.2, 3.95, 19.3],
 )
 
-sio2 = results["SiO2"]
-au   = results["Au"]
+sio2 = results[1]   # SiO2 (same order as input)
+au   = results[3]   # Au
 ```
 
 ## Input parameters

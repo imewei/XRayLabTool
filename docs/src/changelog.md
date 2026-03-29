@@ -3,6 +3,29 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), adhering to [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] - 2026-03-28
+
+### Breaking
+- `calculate_xray_properties` now returns `Vector{XRayResult}` instead of `Dict{String, XRayResult}`. Use index-based access (`results[1]`) instead of key-based (`results["SiO2"]`). This preserves duplicate formulas with different densities.
+- Batch validation is strict: all formulas are checked upfront and invalid ones are listed in a single `ArgumentError` before any computation begins.
+- `calculate_single_material_properties` now sorts energies ascending, matching batch API behavior.
+
+### Added
+- Recursive descent formula parser supporting parenthesized groups: `Ca(OH)2`, `Ca3(PO4)2`, `Fe((OH)2)3`
+- Comprehensive debug logging: 27 `@debug` log points across 6 categories (`:parser`, `:cache`, `:io`, `:validation`, `:computation`, `:batch`). Enable with `ENV["JULIA_DEBUG"] = "XRayLabTool"`.
+- ASCII validation in formula parser and element interpolator loader
+- Thread-safety test for concurrent cache access
+- Negative delta guard: `critical_angle` returns 0.0 instead of throwing `DomainError` when delta is negative near absorption edges
+
+### Fixed
+- Thread-safe cache reads: replaced lock-free `Dict.get()` with locked reads (Julia's `Dict` is not safe for concurrent read + write)
+- Physical constants updated to CODATA 2018 / 2019 SI exact values (Planck, elementary charge, Avogadro — ~2e-7 relative change)
+- Formula parser no longer silently produces wrong results for parenthesized formulas
+
+### Changed
+- 408 tests (up from 357): formula parsing, batch validation, thread safety, negative delta, logging, performance
+- `Logging` stdlib added to dependencies
+
 ## [0.6.0] - 2026-03-28
 
 ### Breaking
