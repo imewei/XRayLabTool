@@ -3,6 +3,27 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), adhering to [Semantic Versioning](https://semver.org/).
 
+## [0.7.1] - 2026-03-28
+
+### Fixed
+- `deploydocs` repo URL and canonical link now match actual GitHub repo name (`XRayLabTool` not `XRayLabTool.jl`)
+- Race condition in `clear_caches!`: frozen flag was cleared before dicts were emptied, allowing lock-free reads on a mutating Dict
+- `@debug` keyword args for derived quantities now use lazy closures to avoid eager evaluation when logging is disabled
+
+### Performance
+- Lock-free frozen cache reads after batch validation (CACHES_FROZEN atomic flag eliminates ~5μs lock overhead per warm call)
+- `issorted` guard avoids redundant sort allocation when energies already sorted (batch path)
+- Eliminated redundant `Vector{XRayResult}` copy in batch return path
+- Named unit-conversion constants replace inline magic numbers
+- Single-material allocations reduced 19% (23.5KB → 19.1KB per call)
+
+### Changed
+- Extracted `_compute_derived_quantities` function for readability
+- Removed 3 untested deprecated internal wrappers (`get_atomic_data`, `load_f1f2_table`, `calculate_scattering_factors!`)
+- Removed redundant `format_project.jl` (pre-commit hook handles formatting)
+- Renamed `NS_TO_MS` → `NS_PER_MS` for clarity
+- 419 tests (up from 408 in v0.7.0)
+
 ## [0.7.0] - 2026-03-28
 
 ### Breaking
