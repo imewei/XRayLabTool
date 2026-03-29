@@ -23,8 +23,9 @@ Each log message is tagged with a `_group` symbol for topic-based filtering:
 
 | Level | Used for |
 |-------|----------|
-| `@debug` | Detailed trace: cache hits, per-element values, parsed groups, file paths |
-| `@info` | Summary events: material calculation complete with timing, batch complete, cache cleared |
+| `@debug` | All 25 log points including summaries and timing |
+
+All logging uses `@debug` to ensure zero allocation overhead when disabled (default). The original design specified `@info` for summary events (points #9, #19, #24), but `@info` always evaluates its arguments and allocates strings, which violated the performance contract (<30KB per call). Since the performance contract takes precedence, all points use `@debug`.
 
 Existing `@warn` (deprecation) and `@error` usage unchanged.
 
@@ -43,7 +44,7 @@ Existing `@warn` (deprecation) and `@error` usage unchanged.
 6. **`atomic_number_and_mass` cache miss + write** (`@debug`): Log element symbol, looked-up Z and mass, cache write.
 7. **`load_element_interpolators` cache hit** (`@debug`): Log element symbol.
 8. **`load_element_interpolators` cache miss + write** (`@debug`): Log element symbol, .nff file loaded.
-9. **`clear_caches!`** (`@info`): Log that caches were cleared.
+9. **`clear_caches!`** (`@debug`): Log that caches were cleared.
 
 ### I/O (`:io`) — 2 points
 
@@ -62,7 +63,7 @@ Existing `@warn` (deprecation) and `@error` usage unchanged.
 16. **Molecular weight + electrons** (`@debug`): Log computed MW, total electrons, element count.
 17. **Per-element scattering contribution** (`@debug`): Log once per element (not per energy): element symbol, atom count in formula. Logged during element_data construction, NOT inside the `accumulate_optical_coefficients!` inner loop.
 18. **Derived quantities** (`@debug`): Log electron density, critical angle range, attenuation length range.
-19. **Single-material exit** (`@info`): Log formula, MW, energy count, elapsed_ms.
+19. **Single-material exit** (`@debug`): Log formula, MW, energy count, elapsed_ms.
 20. **Result summary** (`@debug`): Log formula, delta range, beta range, SLD range.
 
 ### Batch (`:batch`) — 4 points
@@ -70,7 +71,7 @@ Existing `@warn` (deprecation) and `@error` usage unchanged.
 21. **Batch entry** (`@debug`): Log formula count, energy count, thread count (`Threads.nthreads()`).
 22. **Validation + cache warm-up complete** (`@debug`): Log elapsed_ms.
 23. **Parallel section complete** (`@debug`): Log elapsed_ms.
-24. **Batch exit** (`@info`): Log total elapsed_ms, result count.
+24. **Batch exit** (`@debug`): Log total elapsed_ms, result count.
 
 ## Timing
 
@@ -84,7 +85,7 @@ function _calculate_single_material_impl(...)
     t_start = time_ns()
     # ... computation ...
     elapsed_ms = (time_ns() - t_start) / 1e6
-    @info "Material calculation complete" _group = :computation formula = formulaStr molecular_weight = molecular_weight energy_count = n_energies elapsed_ms = round(elapsed_ms; digits = 3)
+    @debug "Material calculation complete" _group = :computation formula = formulaStr molecular_weight = molecular_weight energy_count = n_energies elapsed_ms = round(elapsed_ms; digits = 3)
     return result
 end
 ```
@@ -136,13 +137,13 @@ This `GroupFilterLogger` is a **documentation example only** — it goes in the 
 - All detailed logging at `@debug` level — zero argument evaluation when debug is off.
 - `time_ns()` calls (~5ns each) are the only always-executed overhead — 2 per single-material call, 6 per batch call.
 - Existing performance benchmarks must still pass: <30KB allocation, <500us per single-material call.
-- No new dependencies.
+- No new external dependencies (`Logging` is a Julia stdlib, added to `[deps]` for module access).
 
 ## Files Modified
 
 | File | Changes |
 |------|---------|
-| `src/XRayLabTool.jl` | Add ~24 `@debug`/`@info` calls inline, add `time_ns()` timing at function entry/exit |
+| `src/XRayLabTool.jl` | Add 25 `@debug` calls inline, add `time_ns()` timing at function entry/exit |
 | `test/test_edge_cases.jl` | Add test that logging doesn't break functionality (calculate with debug logger active) |
 | `docs/src/api.md` | Add "Debugging" section with usage examples |
 

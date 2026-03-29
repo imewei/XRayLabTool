@@ -288,12 +288,15 @@ symbols, counts = parse_formula("Ca3(PO4)2")
 function parse_formula(formulaStr::String)
     @debug "Parsing formula" _group = :parser input = formulaStr
     if isempty(formulaStr)
+        @debug "Formula rejected: empty string" _group = :parser
         throw(ArgumentError("Invalid chemical formula: empty string"))
     end
 
     elements, counts, pos = _parse_group(formulaStr, 1)
 
     if pos <= lastindex(formulaStr)
+        @debug "Formula rejected: unexpected character" _group = :parser formula =
+            formulaStr position = pos character = formulaStr[pos]
         throw(
             ArgumentError(
                 "Invalid chemical formula: unexpected character '$(formulaStr[pos])' at position $pos in \"$formulaStr\"",
@@ -302,6 +305,7 @@ function parse_formula(formulaStr::String)
     end
 
     if isempty(elements)
+        @debug "Formula rejected: no elements found" _group = :parser formula = formulaStr
         throw(ArgumentError("Invalid chemical formula: $formulaStr"))
     end
 
@@ -568,6 +572,8 @@ function _calculate_xray_properties_impl(
     t_batch_start = time_ns()
     @debug "Batch calculation started" _group = :batch formula_count = length(formulaList) energy_count =
         length(energies_keV) threads = Threads.nthreads()
+    @debug "Batch input summary" _group = :validation formula_count = length(formulaList) energy_count =
+        length(energies_keV) density_count = length(massDensityList)
 
     # ==================================================================================
     # INPUT VALIDATION
