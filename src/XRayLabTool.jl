@@ -173,6 +173,30 @@ const INTERPOLATOR_LOCK = ReentrantLock()
     end
 end
 
+"""Validate all formulas upfront. Throws ArgumentError listing all invalid formulas."""
+function _validate_formulas(formulaList::Vector{String})
+    invalid = String[]
+    for formula in formulaList
+        try
+            symbols, _ = parse_formula(formula)
+            for sym in symbols
+                atomic_number_and_mass(sym)
+                load_element_interpolators(sym)
+            end
+        catch
+            push!(invalid, formula)
+        end
+    end
+    if !isempty(invalid)
+        throw(
+            ArgumentError(
+                "Invalid formulas: $(join(invalid, ", ")). " *
+                "Check element symbols and spelling.",
+            ),
+        )
+    end
+end
+
 # =====================================================================================
 # HELPER FUNCTIONS
 # =====================================================================================
@@ -525,46 +549,35 @@ function _calculate_xray_properties_impl(
     end
 
     # ==================================================================================
-    # CACHE WARM-UP (single-threaded, ensures all element data is cached before
-    # entering the @threads loop — makes lock-free reads safe in parallel section)
+    # STRICT VALIDATION (single-threaded — validates ALL formulas before any computation,
+    # reports all errors at once, and warms caches as a side effect)
     # ==================================================================================
 
     energies_keV_sorted = sort(energies_keV)
 
-    for formula in formulaList
-        symbols, _ = parse_formula(formula)
-        for sym in symbols
-            atomic_number_and_mass(sym)
-            load_element_interpolators(sym)
-        end
-    end
+    _validate_formulas(formulaList)
 
     # ==================================================================================
     # PARALLEL CALCULATION (lock-free: Vector indexed writes, caches are read-only)
     # ==================================================================================
 
     n_formulas = length(formulaList)
-    results_vec = Vector{Union{Nothing, XRayResult}}(nothing, n_formulas)
+    results_vec = Vector{XRayResult}(undef, n_formulas)
 
     @threads :dynamic for i in 1:n_formulas
-        try
-            results_vec[i] = _calculate_single_material_impl(
-                formulaList[i],
-                energies_keV_sorted,
-                massDensityList[i];
-                _validated = true,
-            )
-        catch e
-            @warn "Failed to process formula $(formulaList[i]): $e"
-        end
+        results_vec[i] = _calculate_single_material_impl(
+            formulaList[i],
+            energies_keV_sorted,
+            massDensityList[i];
+            _validated = true,
+        )
     end
 
     # Collect into Dict (single-threaded, no lock needed)
     results = Dict{String, XRayResult}()
     sizehint!(results, n_formulas)
     for i in 1:n_formulas
-        r = results_vec[i]
-        r !== nothing && (results[formulaList[i]] = r)
+        results[formulaList[i]] = results_vec[i]
     end
 
     return results

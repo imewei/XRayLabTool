@@ -512,6 +512,38 @@ end
 end
 
 # =======================================================================================
+# STRICT BATCH VALIDATION
+# =======================================================================================
+
+@testset "Strict batch validation" begin
+    @testset "Invalid formula in batch throws listing all errors" begin
+        err = nothing
+        try
+            calculate_xray_properties(
+                ["SiO2", "XxYy", "H2O", "ZzZz"],
+                [8.0],
+                [2.2, 1.0, 1.0, 1.0],
+            )
+        catch e
+            err = e
+        end
+        @test err isa ArgumentError
+        msg = err.msg
+        # Should list ALL invalid formulas, not just the first
+        @test occursin("XxYy", msg)
+        @test occursin("ZzZz", msg)
+        # Should NOT list valid formulas
+        @test !occursin("SiO2", msg)
+        @test !occursin("H2O", msg)
+    end
+
+    @testset "All-valid formulas still work" begin
+        results = calculate_xray_properties(["SiO2", "H2O"], [8.0], [2.2, 1.0])
+        @test length(results) == 2
+    end
+end
+
+# =======================================================================================
 # 14. KNOWN MOLECULAR WEIGHTS
 # =======================================================================================
 
