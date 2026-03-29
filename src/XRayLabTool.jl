@@ -171,6 +171,9 @@ const ATOMIC_DATA_CACHE = Dict{String, Tuple{Int, Float64}}()
 const ATOMIC_DATA_LOCK = ReentrantLock()
 const INTERPOLATOR_CACHE = Dict{String, Tuple{PCHIPInterp, PCHIPInterp}}()
 const INTERPOLATOR_LOCK = ReentrantLock()
+# When true, caches are fully populated and can be read without locks.
+# Set to true after _validate_formulas completes; reset by clear_caches!.
+const CACHES_FROZEN = Threads.Atomic{Bool}(false)
 
 # =====================================================================================
 # VALIDATION
@@ -220,6 +223,7 @@ function _validate_formulas(formulaList::Vector{String})
             ),
         )
     end
+    CACHES_FROZEN[] = true
     @debug "All formulas validated" _group = :validation formula_count = length(formulaList)
 end
 
@@ -243,7 +247,16 @@ Uses caching to avoid repeated lookups of the same element.
 - 'ArgumentError': If element symbol is not found in periodic table
 """
 function atomic_number_and_mass(element_symbol::String)
-    # Thread-safe read — Julia's Dict is not safe for concurrent read + write
+    # Lock-free read when caches are frozen (after _validate_formulas)
+    if CACHES_FROZEN[]
+        cached = get(ATOMIC_DATA_CACHE, element_symbol, nothing)
+        if cached !== nothing
+            @debug "Atomic data cache hit (frozen)" _group = :cache element = element_symbol
+            return cached
+        end
+    end
+
+    # Locked read — required during cache population
     cached = lock(ATOMIC_DATA_LOCK) do
         get(ATOMIC_DATA_CACHE, element_symbol, nothing)
     end
@@ -343,6 +356,8 @@ Returns (element_symbols, element_counts, next_position).
 function _parse_group(s::String, pos::Int)
     elements = String[]
     counts = Float64[]
+    sizehint!(elements, 4)
+    sizehint!(counts, 4)
 
     while pos <= lastindex(s)
         c = s[pos]
@@ -445,7 +460,17 @@ Returns cached interpolator pair if available, otherwise loads the element's
 - `ArgumentError`: If element data file cannot be found
 """
 function load_element_interpolators(element_symbol::String)
-    # Thread-safe read — Julia's Dict is not safe for concurrent read + write
+    # Lock-free read when caches are frozen (after _validate_formulas)
+    if CACHES_FROZEN[]
+        cached = get(INTERPOLATOR_CACHE, element_symbol, nothing)
+        if cached !== nothing
+            @debug "Interpolator cache hit (frozen)" _group = :cache element =
+                element_symbol
+            return cached
+        end
+    end
+
+    # Locked read — required during cache population
     cached = lock(INTERPOLATOR_LOCK) do
         get(INTERPOLATOR_CACHE, element_symbol, nothing)
     end
@@ -693,7 +718,7 @@ function _calculate_xray_properties_impl(
     @debug "Batch calculation complete" _group = :batch result_count = n_formulas elapsed_ms =
         round(elapsed_total_ms; digits = 3)
 
-    return Vector{XRayResult}(results_vec)
+    return results_vec
 end
 
 """
@@ -718,8 +743,10 @@ function _calculate_single_material_impl(
 
     t_start = time_ns()
 
-    # Sort energies for consistent output (batch path already sorts)
-    energies_keV = sort(energies_keV)
+    # Sort energies for consistent output (skip if already sorted — e.g., from batch path)
+    if !issorted(energies_keV)
+        energies_keV = sort(energies_keV)
+    end
 
     @debug "Single-material calculation started" _group = :computation formula = formulaStr density =
         massDensity energy_count = length(energies_keV)
@@ -811,9 +838,16 @@ function _calculate_single_material_impl(
         _compute_derived_quantities(wavelengths_m, delta, beta)
 
     @debug "Derived quantities computed" _group = :computation formula = formulaStr electron_density =
-        round(electron_density; sigdigits = 6) critical_angle_range = "($(round(minimum(critical_angle); sigdigits=4)), $(round(maximum(critical_angle); sigdigits=4)))" attenuation_length_range = "($(round(minimum(attenuation_length); sigdigits=4)), $(round(maximum(attenuation_length); sigdigits=4)))"
+        round(electron_density; sigdigits = 6) critical_angle_range =
+        () ->
+            "($(round(minimum(critical_angle); sigdigits=4)), $(round(maximum(critical_angle); sigdigits=4)))" attenuation_length_range =
+        () ->
+            "($(round(minimum(attenuation_length); sigdigits=4)), $(round(maximum(attenuation_length); sigdigits=4)))"
 
-    @debug "Result summary" _group = :computation formula = formulaStr delta_range = "($(minimum(delta)), $(maximum(delta)))" beta_range = "($(minimum(beta)), $(maximum(beta)))" sld_range = "($(minimum(re_sld)), $(maximum(re_sld)))"
+    @debug "Result summary" _group = :computation formula = formulaStr delta_range =
+        () -> "($(minimum(delta)), $(maximum(delta)))" beta_range =
+        () -> "($(minimum(beta)), $(maximum(beta)))" sld_range =
+        () -> "($(minimum(re_sld)), $(maximum(re_sld)))"
 
     elapsed_ms = (time_ns() - t_start) / NS_TO_MS
     @debug "Material calculation complete" _group = :computation formula = formulaStr MW =
@@ -927,6 +961,7 @@ clear_caches!()
 '''
 """
 function clear_caches!()
+    CACHES_FROZEN[] = false
     lock(ATOMIC_DATA_LOCK) do
         empty!(ATOMIC_DATA_CACHE)
     end
