@@ -1,5 +1,33 @@
 # Migration Guide
 
+## v0.6 → v0.7
+
+### Breaking changes
+
+**`calculate_xray_properties` returns `Vector{XRayResult}` instead of `Dict{String, XRayResult}`**:
+Previously, duplicate formulas with different densities would silently overwrite each other in the Dict. The new Vector return type preserves all entries in input order.
+
+```julia
+# Old (v0.6)
+results = calculate_xray_properties(formulas, energies, densities)
+sio2 = results["SiO2"]
+
+# New (v0.7)
+results = calculate_xray_properties(formulas, energies, densities)
+sio2 = results[1]  # index-based access
+```
+
+**Batch validation is now strict**: Invalid formulas in a batch call now throw a single `ArgumentError` listing all invalid formulas before any computation begins. Previously, the first invalid formula crashed the call and subsequent ones were never checked.
+
+**Single-material path now sorts energies**: `calculate_single_material_properties` now returns results with energies sorted in ascending order, matching the batch API behavior.
+
+### Non-breaking improvements
+
+- Parenthesized chemical formulas are now supported: `Ca(OH)2`, `Ca3(PO4)2`, `Fe((OH)2)3`
+- Physical constants updated to CODATA 2018 / 2019 SI exact values (~2e-7 relative change)
+- Thread-safe cache reads (locked Dict access prevents segfault under concurrent use)
+- Critical angle returns 0.0 instead of throwing `DomainError` when delta is negative near absorption edges
+
 ## v0.5 → v0.6
 
 ### Breaking changes

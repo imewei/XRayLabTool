@@ -1,7 +1,7 @@
 name = "XRayLabTool"
 uuid = "df3fe04d-a251-48f4-b0c1-7c37c180def4"
 authors = ["Wei Chen <wchen@anl.gov> and contributors"]
-version = "0.6.0"
+version = "0.7.0"
 
 [deps]
 Mendeleev = "c116f080-063d-490a-9873-2b5b2cce4c34"
