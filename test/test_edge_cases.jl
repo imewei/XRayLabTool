@@ -27,15 +27,17 @@ using XRayLabTool
 # =======================================================================================
 
 @testset "Physical Constants" begin
-    # NIST CODATA 2018 values
-    @test XRayLabTool.THOMSON_SCATTERING_LENGTH ≈ 2.8179403227e-15 atol=1e-25
-    @test XRayLabTool.SPEED_OF_LIGHT ≈ 299792458.0 atol=1.0
-    @test XRayLabTool.AVOGADRO ≈ 6.02214199e23 rtol=1e-6
+    # CODATA 2018 / 2019 SI redefinition exact values
+    @test XRayLabTool.THOMSON_SCATTERING_LENGTH ≈ 2.8179403205e-15 atol = 1e-25
+    @test XRayLabTool.SPEED_OF_LIGHT ≈ 299792458.0 atol = 1.0
+    @test XRayLabTool.PLANCK == 6.62607015e-34  # exact
+    @test XRayLabTool.ELEMENT_CHARGE == 1.602176634e-19  # exact
+    @test XRayLabTool.AVOGADRO == 6.02214076e23  # exact
 
-    # hc/e derived constant: hc = 12.39842 keV·Å
-    hc_keV_angstrom = 12.39842  # keV·Å (well-known X-ray value)
+    # hc/e derived constant
+    hc_keV_angstrom = 12.39842
     hc_keV_m = hc_keV_angstrom * 1e-10
-    @test XRayLabTool.HC_OVER_ELECTRON_CHARGE_keV ≈ hc_keV_m rtol=1e-4
+    @test XRayLabTool.HC_OVER_ELECTRON_CHARGE_keV ≈ hc_keV_m rtol = 1e-4
 
     # Deprecated constant aliases should equal their replacements
     @test XRayLabTool.THOMPSON === XRayLabTool.THOMSON_SCATTERING_LENGTH

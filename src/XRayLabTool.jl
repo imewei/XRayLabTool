@@ -131,11 +131,11 @@ end
 Physical constants used in X-ray calculations.
 All values are in SI units unless otherwise specified.
 """
-const THOMSON_SCATTERING_LENGTH = 2.8179403227e-15    # Thomson scattering length (m)
-const SPEED_OF_LIGHT = 299792458.0   # Speed of light (m/s)
-const PLANCK = 6.626068e-34          # Planck constant (J·s)
-const ELEMENT_CHARGE = 1.60217646e-19 # Elementary charge (C)
-const AVOGADRO = 6.02214199e23       # Avogadro's number (mol⁻¹)
+const THOMSON_SCATTERING_LENGTH = 2.8179403205e-15     # Thomson scattering length (m) — CODATA 2018
+const SPEED_OF_LIGHT = 299792458.0    # Speed of light (m/s) — exact by definition
+const PLANCK = 6.62607015e-34         # Planck constant (J·s) — exact since 2019 SI redefinition
+const ELEMENT_CHARGE = 1.602176634e-19 # Elementary charge (C) — exact since 2019 SI redefinition
+const AVOGADRO = 6.02214076e23        # Avogadro's number (mol⁻¹) — exact since 2019 SI redefinition
 
 # Pre-computed constants for efficiency
 const HC_OVER_ELECTRON_CHARGE_keV = (SPEED_OF_LIGHT * PLANCK / ELEMENT_CHARGE) / 1000.0
