@@ -538,6 +538,11 @@ end
         @test issorted(results[1].energy)
     end
 
+    @testset "Single material also sorts energies" begin
+        result = calculate_single_material_properties("Si", [10.0, 5.0, 8.0], 2.33)
+        @test issorted(result.energy)
+    end
+
     @testset "Duplicate formulas in batch" begin
         results = calculate_xray_properties(["SiO2", "SiO2"], [8.0], [2.2, 3.0])
         @test length(results) == 2

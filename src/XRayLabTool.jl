@@ -596,6 +596,9 @@ function _calculate_single_material_impl(
 
     _validated || _validate_energy_range(energies_keV)
 
+    # Sort energies for consistent output (batch path already sorts)
+    energies_keV = sort(energies_keV)
+
     # ==================================================================================
     # FORMULA PARSING AND ATOMIC DATA LOOKUP
     # ==================================================================================
