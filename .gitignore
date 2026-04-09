@@ -34,3 +34,5 @@ coverage*
 *.html
 CLAUDE.md
 .serena/
+.claude/
+.remember/
