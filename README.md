@@ -10,7 +10,7 @@ XRayLabTool is a Julia package that calculates X-ray optical properties of mater
 - Single and batch multi-material calculations with multi-threaded execution
 - Based on CXRO/Henke atomic scattering factor tables (H through U, 30 eV -- 30 keV)
 - PCHIP interpolation for smooth, monotonicity-preserving evaluation at arbitrary energies
-- Parenthesized chemical formula support: `Ca(OH)2`, `Ca3(PO4)2`, `Fe((OH)2)3`
+- Parenthesized chemical formula support: `Ca(OH)2`, `Ca3(PO4)2`, `Fe(OH)2`, `Fe(OH)3`
 - Debug logging with topic categories (enable with `ENV["JULIA_DEBUG"] = "XRayLabTool"`)
 - Lightweight: only 3 runtime dependencies (PCHIPInterpolation, Mendeleev, Unitful)
 

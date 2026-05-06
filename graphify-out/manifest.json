@@ -1,0 +1,34 @@
+{
+  "/Users/b80985/Projects/XRayLabTool/docs/make.jl": {
+    "mtime": 1774752825.358392,
+    "hash": "6a632cd1d9ef3bb57fef9f9cfd7a36d7"
+  },
+  "/Users/b80985/Projects/XRayLabTool/src/XRayLabTool.jl": {
+    "mtime": 1774752188.6627116,
+    "hash": "d3a634e447c2bfa137945e9ac4e05b6f"
+  },
+  "/Users/b80985/Projects/XRayLabTool/docs/src/physics.md": {
+    "mtime": 1774726133.6793132,
+    "hash": "1ea8065bd0338a6f1e6fbdae9343e3fb"
+  },
+  "/Users/b80985/Projects/XRayLabTool/docs/src/api.md": {
+    "mtime": 1774750403.6768205,
+    "hash": "cf667dd2b9f6078d493fe46575179d2b"
+  },
+  "/Users/b80985/Projects/XRayLabTool/docs/src/changelog.md": {
+    "mtime": 1774753036.992504,
+    "hash": "af670401ac38c6aa772dfab56b99893f"
+  },
+  "/Users/b80985/Projects/XRayLabTool/docs/src/migration.md": {
+    "mtime": 1774745255.2943437,
+    "hash": "be77458a376f89523def04c60bb789a2"
+  },
+  "/Users/b80985/Projects/XRayLabTool/docs/src/getting_started.md": {
+    "mtime": 1774750584.7156248,
+    "hash": "3eb3256a7ce368e3235a790cd0105fc1"
+  },
+  "/Users/b80985/Projects/XRayLabTool/docs/src/index.md": {
+    "mtime": 1774726092.9870186,
+    "hash": "29818c2138fc9556a9da10e71ef34f56"
+  }
+}

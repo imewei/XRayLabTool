@@ -1,0 +1,8 @@
+/Users/b80985/Projects/XRayLabTool/docs/make.jl
+/Users/b80985/Projects/XRayLabTool/src/XRayLabTool.jl
+/Users/b80985/Projects/XRayLabTool/docs/src/physics.md
+/Users/b80985/Projects/XRayLabTool/docs/src/api.md
+/Users/b80985/Projects/XRayLabTool/docs/src/changelog.md
+/Users/b80985/Projects/XRayLabTool/docs/src/migration.md
+/Users/b80985/Projects/XRayLabTool/docs/src/getting_started.md
+/Users/b80985/Projects/XRayLabTool/docs/src/index.md
